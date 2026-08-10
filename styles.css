@@ -1,0 +1,564 @@
+/* Nutrimat — design tokens, layout and components.
+   Adapted from the Saldomat token system; re-hued green → coffee/amber.
+   Light and dark are both first-class. */
+
+:root {
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --border: #e8ddce;
+  --text: #241c15;
+  --text-muted: #6f6459;
+
+  /* Coffee/amber: Nutrimat's identity. */
+  --accent: #9c5a2c;
+  --accent-soft: #f1e3d3;
+  --accent-text: #ffffff;
+
+  /* Forecast (planned drink) — a distinct teal so it never reads as "just the same line". */
+  --forecast: #1f7a86;
+  --forecast-soft: #d6ebee;
+
+  --warn: #8a5a00;
+  --warn-soft: #fdf1d8;
+  --danger: #a12d2d;
+  --danger-soft: #f7dede;
+  --ok: #2f7d4f;
+
+  --radius: 0.6rem;
+  --gap: 1rem;
+  --maxw: 60rem;
+
+  --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-num: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #191411;
+    --surface: #221c17;
+    --border: #38302a;
+    --text: #ece5dd;
+    --text-muted: #a89b8d;
+
+    --accent: #e0a066;
+    --accent-soft: #38281b;
+    --accent-text: #23180e;
+
+    --forecast: #56b9c6;
+    --forecast-soft: #123034;
+
+    --warn: #e0b25f;
+    --warn-soft: #33291433;
+    --danger: #e08585;
+    --danger-soft: #3a1f1f;
+    --ok: #6fbf90;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: clamp(1rem, 3vw, 2.5rem) 1rem 4rem;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  max-width: var(--maxw);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+a {
+  color: var(--accent);
+}
+
+:where(button, input, select):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────── page head */
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+
+.tagline {
+  margin: 0.15rem 0 0;
+  font-size: 0.95rem;
+}
+
+/* ───────────────────────────────────────────────────────────────── card */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--gap);
+}
+
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: var(--gap);
+}
+
+.card__head h2 {
+  margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────── notice / warning */
+
+.notice,
+.warning {
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.notice {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.warning {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.disclaimer {
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.disclaimer strong {
+  color: var(--warn);
+}
+
+/* ───────────────────────────────────────────────────────────── summary */
+
+.summary__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--gap);
+}
+
+.summary__label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.summary__value {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-num);
+  font-size: clamp(2rem, 6vw, 2.7rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary__value--over {
+  color: var(--danger);
+}
+
+.summary__value--ok {
+  color: var(--ok);
+}
+
+.summary__unit {
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────── chart */
+
+.chart {
+  width: 100%;
+  height: 340px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend__swatch {
+  display: inline-block;
+  width: 1.1rem;
+  height: 0;
+  border-top-width: 3px;
+  border-top-style: solid;
+}
+
+.legend__swatch--actual {
+  border-top-color: var(--accent);
+}
+
+.legend__swatch--forecast {
+  border-top-style: dashed;
+  border-top-color: var(--forecast);
+}
+
+.legend__swatch--threshold {
+  border-top-style: dashed;
+  border-top-color: var(--danger);
+}
+
+.chart__flag {
+  margin: 0.75rem 0 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.chart__flag[data-state='ok'] {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
+}
+
+.chart__flag[data-state='over'] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.chart__flag[hidden] {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────── fields */
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--gap);
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.field__hint {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* A lead-in hint under a card heading. */
+.card__lead {
+  margin: -0.4rem 0 0.9rem;
+  font-size: 0.85rem;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.advanced {
+  grid-column: 1 / -1;
+  margin-top: 0.25rem;
+}
+
+.advanced > summary {
+  width: fit-content;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.advanced .fields {
+  margin-top: 0.75rem;
+}
+
+/* ─────────────────────────────────────────────────────────────── buttons */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.button:hover {
+  filter: brightness(1.08);
+}
+
+.button--quiet {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.button--quiet:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  filter: none;
+}
+
+.button--small {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+/* An icon-only remove button that reads as a quiet control. */
+.icon-button {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ────────────────────────────────────────────────────────── log entries */
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: var(--gap);
+}
+
+.log-empty {
+  margin: 0 0 var(--gap);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1.6fr) 6.5rem minmax(6rem, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.entry__mg {
+  position: relative;
+}
+
+.entry__mg::after {
+  content: 'mg';
+  position: absolute;
+  right: 0.55rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.entry__mg input {
+  padding-right: 2.1rem;
+}
+
+.entry__brewtag {
+  grid-column: 1 / -1;
+  margin: -0.15rem 0 0.15rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.entry__brewtag button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 34rem) {
+  .entry {
+    grid-template-columns: 1fr 1fr auto;
+  }
+  .entry select {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ─────────────────────────────────────────────────────── plan + sleep row */
+
+.inline-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: var(--gap);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.inline-toggle input {
+  width: auto;
+}
+
+/* ────────────────────────────────────────────────────────── brew dialog */
+
+dialog.brew {
+  width: min(34rem, 92vw);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+}
+
+dialog.brew::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.brew__body {
+  padding: var(--gap);
+}
+
+.brew__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: var(--gap);
+}
+
+.brew__head h2 {
+  margin: 0;
+}
+
+.brew__result {
+  margin-top: var(--gap);
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  font-size: 0.9rem;
+}
+
+.brew__result strong {
+  font-family: var(--font-num);
+  font-size: 1.15rem;
+}
+
+.brew__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: var(--gap);
+}
+
+/* ───────────────────────────────────────────────────────────── footnote */
+
+.footnote {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.footnote h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.85rem;
+}
+
+.footnote ul {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+}

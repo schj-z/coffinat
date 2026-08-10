@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nutrimat — caffeine planner</title>
+    <meta
+      name="description"
+      content="Estimate how caffeine moves through your blood over the day and plan drinks to sleep better."
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="page-head">
+        <div>
+          <h1>Nutrimat</h1>
+          <p class="tagline muted">See your blood caffeine through the day — and plan around your sleep.</p>
+        </div>
+      </header>
+
+      <div class="disclaimer" role="note">
+        <strong>Not medical advice.</strong> This is an educational estimate based on
+        population-average pharmacokinetics; individual caffeine metabolism varies widely. Do not use
+        it for medical or dosing decisions.
+      </div>
+
+      <!-- Summary -->
+      <section class="card summary" aria-label="Summary">
+        <div class="summary__grid">
+          <div>
+            <p class="summary__label">Caffeine in blood now</p>
+            <p class="summary__value" id="now-value">0.00 <span class="summary__unit">mg/L</span></p>
+          </div>
+          <div>
+            <p class="summary__label">Consumed today</p>
+            <p class="summary__value" id="today-value">0 <span class="summary__unit">/ 400 mg</span></p>
+            <p class="field__hint" id="today-note"></p>
+          </div>
+          <div>
+            <p class="summary__label" id="bed-label">At bedtime</p>
+            <p class="summary__value" id="bed-value">0.00 <span class="summary__unit">mg/L</span></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Chart -->
+      <section class="card" aria-label="Chart">
+        <div class="card__head">
+          <h2>Blood caffeine through the day</h2>
+          <ul class="legend">
+            <li class="legend__item"><span class="legend__swatch legend__swatch--actual"></span>Actual</li>
+            <li class="legend__item"><span class="legend__swatch legend__swatch--forecast"></span>Forecast</li>
+            <li class="legend__item"><span class="legend__swatch legend__swatch--threshold"></span>Sleep limit</li>
+          </ul>
+        </div>
+        <div id="chart" class="chart" role="img" aria-label="Estimated blood caffeine concentration over 24 hours"></div>
+        <p class="chart__flag" id="sleep-flag" hidden></p>
+      </section>
+
+      <!-- You -->
+      <section class="card" aria-label="Your body">
+        <h2>You</h2>
+        <div class="fields">
+          <label class="field">
+            Body mass (kg)
+            <input type="number" id="mass" min="1" step="1" inputmode="decimal" />
+            <span class="field__hint">Sets your volume of distribution (≈0.6 L/kg).</span>
+          </label>
+          <details class="advanced">
+            <summary>Advanced</summary>
+            <div class="fields">
+              <label class="field">
+                Elimination half-life (h)
+                <input type="number" id="halflife" min="0.5" step="0.5" inputmode="decimal" />
+                <span class="field__hint">Default 5 h. Smoking shortens it; pregnancy and some
+                  medications lengthen it (up to ~8+ h).</span>
+              </label>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- Today's log -->
+      <section class="card" aria-label="Today's caffeine">
+        <div class="card__head">
+          <h2>Today's caffeine</h2>
+        </div>
+        <div id="log-list" class="log-list"></div>
+        <button type="button" class="button" id="add-entry">+ Add drink</button>
+      </section>
+
+      <!-- Plan a drink -->
+      <section class="card" aria-label="Plan a drink">
+        <h2>Plan a drink (forecast)</h2>
+        <p class="card__lead muted">
+          Try out a drink you are thinking about and see how it changes the curve.
+        </p>
+        <div class="fields">
+          <label class="field">
+            Product
+            <select id="plan-product" aria-label="Planned product"></select>
+          </label>
+          <label class="field">
+            Time
+            <input type="time" id="plan-time" />
+          </label>
+          <label class="field">
+            Caffeine (mg)
+            <input type="number" id="plan-mg" min="0" step="1" />
+          </label>
+        </div>
+        <label class="inline-toggle">
+          <input type="checkbox" id="plan-enabled" />
+          Show this forecast on the chart
+        </label>
+      </section>
+
+      <!-- Sleep goal -->
+      <section class="card" aria-label="Sleep goal">
+        <h2>Sleep goal</h2>
+        <p class="card__lead muted">
+          Set the level you want to be under by bedtime. As a rough guide, lower is better for sleep;
+          many people aim well below ~1–2 mg/L.
+        </p>
+        <div class="fields">
+          <label class="field">
+            Be below (mg/L)
+            <input type="number" id="sleep-threshold" min="0" step="0.1" inputmode="decimal" />
+          </label>
+          <label class="field">
+            By (bedtime)
+            <input type="time" id="sleep-time" />
+          </label>
+        </div>
+      </section>
+
+      <footer class="footnote muted">
+        <h3>How this works</h3>
+        <p>
+          Each drink is modelled with a one-compartment pharmacokinetic (Bateman) model: caffeine is
+          absorbed over roughly the first ~45 minutes (so your level rises gradually, it does not jump)
+          and then eliminated with a half-life of about 5 hours. Concentration is estimated in mg/L of
+          blood using a volume of distribution of ≈0.6 L/kg × your body mass. Constants are
+          population averages from published pharmacology; your own metabolism may differ substantially.
+        </p>
+        <p><strong>Not medical advice.</strong> Educational estimate only.</p>
+      </footer>
+    </div>
+
+    <!-- Home-brew calculator -->
+    <dialog id="brew-dialog" class="brew">
+      <form method="dialog" class="brew__body">
+        <div class="brew__head">
+          <h2>Home-brew calculator</h2>
+        </div>
+        <div class="fields">
+          <label class="field">
+            Method
+            <select id="brew-method"></select>
+          </label>
+          <label class="field">
+            Beans
+            <select id="brew-bean"></select>
+          </label>
+          <label class="field">
+            Ground coffee (g)
+            <input type="number" id="brew-grounds" min="0" step="0.5" inputmode="decimal" />
+          </label>
+          <label class="field">
+            Water (ml)
+            <input type="number" id="brew-water" min="0" step="10" inputmode="decimal" />
+          </label>
+          <label class="field">
+            Brew / contact time (min)
+            <input type="number" id="brew-time" min="0" step="0.5" inputmode="decimal" />
+          </label>
+          <label class="field">
+            You drink (ml)
+            <input type="number" id="brew-serving" min="0" step="10" inputmode="decimal" />
+          </label>
+        </div>
+        <div class="brew__result" id="brew-result" aria-live="polite"></div>
+        <p class="field__hint">
+          Assumes near-boiling water (~93–96 °C). Extraction is ~95% complete within ~2 minutes.
+        </p>
+        <div class="brew__actions">
+          <button type="button" class="button button--quiet" id="brew-cancel">Cancel</button>
+          <button type="button" class="button" id="brew-use">Use this drink</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="vendor/echarts.min.js"></script>
+    <script src="model.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

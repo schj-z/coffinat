@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- A monochrome coffee cup. The colour lives inside the SVG: a favicon does not inherit
+       currentColor and the page stylesheet does not reach it, so the light/dark switch is a
+       media query here. A fixed dark mark would vanish against a dark browser tab strip. -->
+  <style>
+    .mark { fill: none; stroke: #9c5a2c; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    @media (prefers-color-scheme: dark) {
+      .mark { stroke: #e0a066; }
+    }
+  </style>
+  <!-- rising steam -->
+  <path class="mark" d="M13 3c-1.2 1.4-1.2 2.6 0 4M19 3c-1.2 1.4-1.2 2.6 0 4" />
+  <!-- cup body -->
+  <path class="mark" d="M6 12h16v6a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z" />
+  <!-- handle -->
+  <path class="mark" d="M22 13h2.5a3 3 0 0 1 0 6H22" />
+</svg>

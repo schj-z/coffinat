@@ -1,0 +1,23 @@
+# Nutrimat — Caddy serves the static files. Plain HTTP on a high port so it works under a
+# non-privileged, capability-dropped container; put a TLS proxy in front if you expose it.
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+:8080 {
+	root * /srv
+	file_server
+	encode zstd gzip
+
+	# All scripts and styles are self-hosted (ECharts is vendored), so the policy can be strict:
+	# no inline script, no eval, nothing loaded cross-origin.
+	header {
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		X-Frame-Options "DENY"
+		-Server
+	}
+}

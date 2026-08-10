@@ -1,0 +1,12 @@
+# Only the site files are COPYed explicitly, but keep the build context lean and secrets out anyway.
+.git
+.gitignore
+.claude
+# Note: Caddyfile is intentionally NOT ignored — the Containerfile COPYs it into the image.
+*.md
+model.test.js
+compose.yaml
+.dockerignore
+.DS_Store
+.env
+.env.*

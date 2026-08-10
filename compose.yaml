@@ -1,0 +1,27 @@
+# Nutrimat — one static-site service behind Caddy.
+#   podman compose up -d --build     # start on http://localhost:8080
+#   podman compose down              # stop (no data volume — nothing to lose)
+# `docker compose …` works identically.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: nutrimat:latest
+    container_name: nutrimat
+    # Loopback only by default: this is a personal planner, not a public service. Put it behind a
+    # TLS-terminating reverse proxy if you want it reachable from your network.
+    ports:
+      - "127.0.0.1:${HOST_PORT:-8080}:8080"
+    # Hardening. Under rootless podman the container's root is already mapped to your unprivileged
+    # user; these add a read-only root filesystem, no privilege escalation, and no Linux caps.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /data
+      - /config
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
