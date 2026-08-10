@@ -1,0 +1,11 @@
+{
+  "name": "nutrimat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A static single-page caffeine planner. Pure model in model.js, tested with node --test.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  }
+}

@@ -10,7 +10,8 @@ RUN apk add --no-cache libcap \
  && apk del libcap
 
 COPY Caddyfile /etc/caddy/Caddyfile
-COPY index.html styles.css app.js model.js favicon.svg /srv/
+COPY index.html styles.css model.js favicon.svg /srv/
+COPY js/ /srv/js/
 COPY vendor/ /srv/vendor/
 
 EXPOSE 8080

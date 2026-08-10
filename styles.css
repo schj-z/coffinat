@@ -428,9 +428,19 @@ input[aria-invalid='true'] {
 
 .entry {
   display: grid;
-  grid-template-columns: minmax(8rem, 1.6fr) 6.5rem minmax(6rem, 1fr) auto;
+  grid-template-columns: minmax(7rem, 1.6fr) 6rem minmax(5rem, 1fr) auto auto;
   gap: 0.5rem;
   align-items: center;
+}
+
+/* A hidden entry stays in the list but is excluded from the calculation — dim it and strike it. */
+.entry--hidden {
+  opacity: 0.55;
+}
+
+.entry--hidden select,
+.entry--hidden .entry__mg input {
+  text-decoration: line-through;
 }
 
 .entry__mg {
@@ -472,11 +482,129 @@ input[aria-invalid='true'] {
 
 @media (max-width: 34rem) {
   .entry {
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr auto auto;
   }
   .entry select {
     grid-column: 1 / -1;
   }
+}
+
+/* ────────────────────────────────────────────────────── half-life slider */
+
+input[type='range'] {
+  width: 100%;
+  padding: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ────────────────────────────────────────────────────────────── calendar */
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cal-nav__date {
+  flex: 1 1 auto;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-month {
+  margin-top: var(--gap);
+  padding-top: var(--gap);
+  border-top: 1px solid var(--border);
+}
+
+.cal-month__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.cal-month__label {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.cal-grid--head {
+  margin-bottom: 3px;
+}
+
+.cal-weekday {
+  padding-bottom: 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.cal-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.cal-cell--blank {
+  cursor: default;
+}
+
+button.cal-cell:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* A day with logged drinks gets a dot. */
+.cal-cell--data::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.cal-cell--today {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  font-weight: 700;
+}
+
+.cal-cell--selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.cal-cell--selected.cal-cell--data::after {
+  background: var(--accent-text);
+}
+
+button.cal-cell--selected:hover {
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ─────────────────────────────────────────────────────── plan + sleep row */

@@ -6,11 +6,14 @@ so you can plan around a daily limit and your bedtime.
 
 ## What it is (and is not)
 
-- A **static site**: plain HTML, CSS and JavaScript plus one vendored library (ECharts). **No
-  backend, no database, no build step, no framework, no bundler, no `package.json`.**
+- A **static site**: plain HTML, CSS and **native ES modules** plus one vendored library (ECharts).
+  **No backend, no database, no build step, no framework, no bundler.** The only `package.json` is a
+  one-line `{"type":"module"}` plus the `node --test` script — config, not a dependency tree.
+- The JS is loaded as **native ES modules** (`<script type="module">`, `import`/`export`) — no
+  bundler. Because ES modules need an HTTP origin, serve it (container / `python3 -m http.server` /
+  GitHub Pages); it does **not** run when opened as a bare `file://`.
 - Served in production by a **Caddy container under podman** (`compose.yaml`), but it is just static
-  files — it also runs opened as `file://` or from any static host (GitHub Pages, `python3 -m
-  http.server`, …).
+  files hostable on any static server (GitHub Pages, …).
 - **Not medical advice.** Every estimate uses population-average pharmacokinetic constants;
   individual metabolism varies widely. This must stay visible in the UI.
 
@@ -22,21 +25,28 @@ so you can plan around a daily limit and your bedtime.
    cost of security.
 
 2. **The core logic is pure and lives in `model.js`.** All pharmacokinetics, the brew-extraction
-   maths, unit/time helpers and the constants live there as pure functions: **numbers in, numbers
-   out — no DOM, no `localStorage`, no `Date.now()`** (the current time is passed in). This is the
-   rule most worth protecting: it is what keeps the maths auditable and testable.
+   maths, unit/time helpers and the constants live there as pure, `export`ed functions: **numbers
+   in, numbers out — no DOM, no `localStorage`, no `Date.now()`** (the current time is passed in).
+   This is the rule most worth protecting: it is what keeps the maths auditable and testable.
 
-3. **The core logic is tested.** `model.test.js` runs with `node --test` (zero dependencies). Tests
-   must fail if the maths is wrong — assert observable properties (peak location, half-life decay,
-   additivity, the `ka≈ke` limit being finite, scale), not merely "it returned a number". Run them
-   before claiming a change to the model is done.
+3. **The core logic is tested.** `model.test.js` runs with `node --test` (zero dependencies, imports
+   `model.js` directly). Tests must fail if the maths is wrong — assert observable properties (peak
+   location, half-life decay, additivity, the `ka≈ke` limit being finite, scale), not merely "it
+   returned a number". Run them before claiming a change to the model is done.
 
-4. **`app.js` is the impure shell.** State, `localStorage`, DOM rendering and the ECharts chart. It
-   *consumes* `model.js` (the `NutrimatModel` global) and must not contain pharmacology.
+4. **`js/` is the impure shell, one ES module per concern.** `util, presets, storage, chart, brew,
+   calendar, log, controls` and the `app` orchestrator. They `import` `model.js`; only `app.js` owns
+   the state and the single `render()`. Modules mutate state then call `api.commit()` (save +
+   render) — they never reach into each other. No pharmacology outside `model.js`.
 
 5. **No inline script or style; nothing cross-origin.** All JS/CSS is in external self-hosted files
    so the Caddy CSP can stay strict (`script-src 'self'`, `style-src 'self'`). User-entered text
    (custom product names, etc.) reaches the DOM via `textContent`, never string-built `innerHTML`.
+
+6. **Data model: the drink log is per calendar day; profile, plan and sleep goal are global.**
+   `localStorage` key `nutrimat.v2` holds `{ profile, sleep, plan, days: { 'YYYY-MM-DD': { log } },
+   selectedDate }`. Dates are plain local `YYYY-MM-DD` strings — never round-trip a day through UTC.
+   A corrupt saved value must reset to defaults, not throw.
 
 ## The model (see the header comment in `model.js` for the equations and sources)
 
@@ -59,11 +69,21 @@ It fails open (a crash never blocks the session) and only ever denies or asks.
 ## Layout
 
 ```
-index.html        markup + the strict-CSP-friendly script tags (echarts → model → app)
-styles.css        design tokens (light/dark) + layout; coffee/amber accent
-model.js          PURE core logic — PK + brew + time/units + constants (UMD-lite: browser + Node)
-model.test.js     node:test unit tests for model.js
-app.js            state, localStorage, DOM, ECharts (consumes NutrimatModel)
+index.html        markup + script tags: <script src=vendor/echarts> then <script type=module src=js/app.js>
+styles.css        design tokens (light/dark) + layout; coffee/amber accent; calendar + slider
+model.js          PURE ES module — PK + brew + time/units + constants (imported by browser and Node)
+model.test.js     node:test unit tests for model.js (import * as M from './model.js')
+package.json      {"type":"module"} + the test script — config only, no dependency tree
+js/               ES modules, one per concern:
+  util.js           dates, formatting, cssVar, toDoses (filters hidden/invalid)
+  presets.js        drink presets + the product <select> builder
+  storage.js        localStorage load/save/migrate; per-day getDay/hasData
+  chart.js          ECharts option builder; owns the 1-min sampling (XS)
+  brew.js           the home-brew calculator dialog
+  calendar.js       day navigation + month grid (dots days with data)
+  log.js            the per-day drink list (add / edit / hide / remove)
+  controls.js       body profile (mass + half-life slider), plan, sleep goal
+  app.js            orchestrator: state, api {commit, render, currentDay, openBrew, selectDate}
 vendor/           echarts.min.js (vendored 6.1.0, self-hosted)
 favicon.svg       coffee-cup mark (light/dark via media query)
 Containerfile     Caddy (pinned, cap stripped so no-new-privileges can exec it)

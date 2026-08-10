@@ -11,17 +11,24 @@ except this one tries to get your coffee timing right.
 > pharmacokinetics. Individual caffeine metabolism varies widely (genetics, smoking, pregnancy,
 > medication). Do not use it for medical or dosing decisions.
 
-- **Static site.** Plain HTML/CSS/JS plus one vendored chart library ([ECharts](https://echarts.apache.org/)).
-  No backend, no database, no build step, no framework.
-- **Your data stays yours.** Everything is computed in your browser and saved to `localStorage`.
-  There are no network requests and no tracking.
-- **Runs anywhere.** Open `index.html` directly, serve it with any static webserver, host it on
-  GitHub Pages, or run the included Caddy container.
+- **Static site.** Plain HTML/CSS plus native ES modules and one vendored chart library
+  ([ECharts](https://echarts.apache.org/)). No backend, no database, no build step, no framework.
+- **Your data stays yours.** Everything is computed in your browser and saved to `localStorage`,
+  per day. There are no network requests and no tracking.
+- **Serve it anywhere.** Any static webserver works — the included Caddy container, `python3 -m
+  http.server`, or GitHub Pages. (It uses ES modules, so it needs an HTTP origin — opening the bare
+  `index.html` file over `file://` won't work; use one of the above.)
 
 ## What it does
 
+**Pick a day.** A calendar lets you log and review any day; days with entries are dotted. Your log
+is saved per day, so you can plan tomorrow or look back at yesterday. Body mass, half-life, the
+forecast and the sleep goal are shared across days.
+
 **Log your caffeine.** Pick a drink (espresso, filter coffee, tea, energy drink, cola, …) or enter a
-custom amount, set the time, and adjust the milligrams if you like. The chart updates live.
+custom amount, set the time, and adjust the milligrams if you like. The chart updates live. The
+**half-life** is a slider (2–10 h). Each drink has an **eye toggle** to hide it from the calculation
+without deleting it — handy for "what if I'd skipped that one".
 
 **Home-brew calculator.** Choose **Home-brew…** on any drink to estimate the caffeine in coffee you
 brewed yourself, from the grounds, water, method and time:
@@ -56,7 +63,8 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-Or just double-click `index.html` — it works over `file://` too.
+(The app uses native ES modules, so it must be served over HTTP — opening the file directly via
+`file://` will not load the scripts.)
 
 **Container (Caddy + podman):**
 
@@ -69,8 +77,8 @@ podman compose down              # stop
 filesystem, dropped Linux capabilities and no privilege escalation; put a TLS reverse proxy in front
 if you expose it. `HOST_PORT=8090 podman compose up -d` changes the published port.
 
-**GitHub Pages / any static host:** copy `index.html`, `styles.css`, `app.js`, `model.js`,
-`favicon.svg` and `vendor/` to the host. There is nothing to build.
+**GitHub Pages / any static host:** copy `index.html`, `styles.css`, `model.js`, `favicon.svg`,
+`js/` and `vendor/` to the host. There is nothing to build.
 
 ## The model
 
@@ -113,10 +121,14 @@ node --test
 ## Layout
 
 ```
-index.html   styles.css   app.js   model.js   model.test.js   favicon.svg
-vendor/echarts.min.js
+index.html   styles.css   model.js   model.test.js   favicon.svg   package.json
+js/          util, presets, storage, chart, brew, calendar, log, controls, app  (one ES module each)
+vendor/      echarts.min.js
 Containerfile   Caddyfile   compose.yaml
 ```
+
+`model.js` is the pure, tested core (PK + brew maths); everything in `js/` is the UI shell that
+imports it. See `CLAUDE.md` for the conventions.
 
 ## License
 

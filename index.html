@@ -26,15 +26,20 @@
         it for medical or dosing decisions.
       </div>
 
+      <!-- Day picker -->
+      <section class="card" aria-label="Day">
+        <div id="calendar"></div>
+      </section>
+
       <!-- Summary -->
       <section class="card summary" aria-label="Summary">
         <div class="summary__grid">
           <div>
-            <p class="summary__label">Caffeine in blood now</p>
+            <p class="summary__label" id="now-label">Caffeine in blood now</p>
             <p class="summary__value" id="now-value">0.00 <span class="summary__unit">mg/L</span></p>
           </div>
           <div>
-            <p class="summary__label">Consumed today</p>
+            <p class="summary__label">Consumed</p>
             <p class="summary__value" id="today-value">0 <span class="summary__unit">/ 400 mg</span></p>
             <p class="field__hint" id="today-note"></p>
           </div>
@@ -68,24 +73,19 @@
             <input type="number" id="mass" min="1" step="1" inputmode="decimal" />
             <span class="field__hint">Sets your volume of distribution (≈0.6 L/kg).</span>
           </label>
-          <details class="advanced">
-            <summary>Advanced</summary>
-            <div class="fields">
-              <label class="field">
-                Elimination half-life (h)
-                <input type="number" id="halflife" min="0.5" step="0.5" inputmode="decimal" />
-                <span class="field__hint">Default 5 h. Smoking shortens it; pregnancy and some
-                  medications lengthen it (up to ~8+ h).</span>
-              </label>
-            </div>
-          </details>
+          <label class="field">
+            Elimination half-life: <span id="halflife-value">5.0</span> h
+            <input type="range" id="halflife" min="2" max="10" step="0.5" />
+            <span class="field__hint">Default 5 h. Smoking shortens it; pregnancy and some
+              medications lengthen it (up to ~8+ h).</span>
+          </label>
         </div>
       </section>
 
-      <!-- Today's log -->
-      <section class="card" aria-label="Today's caffeine">
+      <!-- Log -->
+      <section class="card" aria-label="Drinks">
         <div class="card__head">
-          <h2>Today's caffeine</h2>
+          <h2 id="log-title">Today's caffeine</h2>
         </div>
         <div id="log-list" class="log-list"></div>
         <button type="button" class="button" id="add-entry">+ Add drink</button>
@@ -193,7 +193,6 @@
     </dialog>
 
     <script src="vendor/echarts.min.js"></script>
-    <script src="model.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="js/app.js"></script>
   </body>
 </html>

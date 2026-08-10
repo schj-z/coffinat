@@ -5,10 +5,10 @@
 // observable property (peak location, half-life decay, additivity, degenerate-case finiteness,
 // scale), not merely "it returned a number".
 
-const test = require('node:test')
-const assert = require('node:assert/strict')
+import test from 'node:test'
+import assert from 'node:assert/strict'
 
-const M = require('./model.js')
+import * as M from './model.js'
 
 const PROFILE = { massKg: 70, halfLifeH: 5 } // 70 kg adult, 5 h half-life
 const VD = M.volumeOfDistributionL(70) // 42 L
