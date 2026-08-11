@@ -1,4 +1,4 @@
-/* Nutrimat — day picker. A compact ◀ day ▶ navigation row (always visible); a button pops up a
+/* Coffinat — day picker. A compact ◀ day ▶ navigation row (always visible); a button pops up a
    month grid that dots the days with data so you can jump to one. Switching day changes which
    day's log the rest of the app shows. */
 import * as util from './util.js'

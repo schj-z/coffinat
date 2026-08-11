@@ -1,6 +1,6 @@
-# Nutrimat — The Model
+# Coffinat — The Model
 
-*How Nutrimat estimates blood‑caffeine concentration over a day, the formulas it uses, and how the
+*How Coffinat estimates blood‑caffeine concentration over a day, the formulas it uses, and how the
 pieces fit together.*
 
 > **Not medical advice.** Every number here is a **population average** from the pharmacology and
@@ -16,7 +16,7 @@ The rest of the app only feeds it numbers and draws the result.
 
 ## 1. Scope
 
-Nutrimat answers one question: *given the caffeinated things you drank and when, roughly what is the
+Coffinat answers one question: *given the caffeinated things you drank and when, roughly what is the
 concentration of caffeine in your blood at each moment of the day?* From that single curve it derives
 everything else — the level "now", the projected peak, the level at bedtime, and an effect band.
 
@@ -118,7 +118,7 @@ This is `tMaxHours(...)`. With the defaults below, `τ_max ≈ 0.75 h ≈ 45 min
 
 ### 2.5 Constants
 
-| Symbol | Meaning | Value in Nutrimat | Notes / source |
+| Symbol | Meaning | Value in Coffinat | Notes / source |
 |---|---|---|---|
 | `F` | Oral bioavailability | **1.0** | Caffeine is ~99–100 % absorbed, ~99 % within 45 min, negligible first‑pass. StatPearls NBK519490; Alsabri 2018. |
 | `Vd` | Volume of distribution | **0.6 L/kg × body mass** | Adult average (range 0.5–0.75 L/kg). This is why body mass is required; it sets the mg/L scale. |
@@ -128,7 +128,7 @@ This is `tMaxHours(...)`. With the defaults below, `τ_max ≈ 0.75 h ≈ 45 min
 
 **A note on `ka`.** Some sources quote an absorption constant around `0.33 min⁻¹ ≈ 19.8 h⁻¹`. That
 value would put the peak at ~15 min, which **contradicts** the observed `t_max` of 30–60 min reported
-in the same literature, so Nutrimat instead pins `ka` to the observed peak time. Absorption is a
+in the same literature, so Coffinat instead pins `ka` to the observed peak time. Absorption is a
 property of the gut, so `ka` is held fixed while the user varies `t½` (elimination).
 
 ### 2.6 Scale sanity check
@@ -190,7 +190,7 @@ The curve is evaluated on a fixed grid from `0` to `1440` minutes at **1‑minut
 
 - The **actual** series uses the logged doses (+ carry‑over).
 - The **forecast** series additionally includes the "plan a drink" dose, when that toggle is on.
-- The **projected peak** is the maximum of a series and the minute at which it occurs; Nutrimat
+- The **projected peak** is the maximum of a series and the minute at which it occurs; Coffinat
   reports an *actual* peak (from what's logged) and, with the forecast on, a *predicted* peak.
 
 ---
@@ -215,7 +215,7 @@ Robusta mix, e.g. many supermarket espresso blends.)
 ### 4.2 Extraction efficiency
 
 Caffeine is very water‑soluble and comes out fast and nearly completely — roughly **95 % of the
-achievable yield within ~2 minutes**, regardless of method. Nutrimat models the fraction extracted as
+achievable yield within ~2 minutes**, regardless of method. Coffinat models the fraction extracted as
 a saturating exponential in contact time `t` (minutes):
 
 ```
@@ -317,7 +317,7 @@ strong‑tolerance user. Unit tests cover the boundary mapping and the tolerance
 
 ### 5.3 Intake guidelines (separate from the ladder)
 
-Independently of blood concentration, Nutrimat shows a running **daily total in mg** against the
+Independently of blood concentration, Coffinat shows a running **daily total in mg** against the
 EFSA guidance: habitual intake up to **400 mg/day** is not a safety concern for healthy adults, and
 single doses up to **200 mg** raise no concern. These are `DAILY_LIMIT_MG` and
 `SINGLE_DOSE_CAUTION_MG`.

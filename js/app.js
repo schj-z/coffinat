@@ -1,4 +1,4 @@
-/* Nutrimat — the orchestrator. It owns the state, wires the modules together, and runs the single
+/* Coffinat — the orchestrator. It owns the state, wires the modules together, and runs the single
    render() that recomputes the summary and redraws the chart. Modules mutate state then call
    api.commit() (save + render); they never reach into each other directly. No pharmacology here. */
 import * as M from '../model.js'

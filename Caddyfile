@@ -1,4 +1,4 @@
-# Nutrimat — Caddy serves the static files. Plain HTTP on a high port so it works under a
+# Coffinat — Caddy serves the static files. Plain HTTP on a high port so it works under a
 # non-privileged, capability-dropped container; put a TLS proxy in front if you expose it.
 {
 	admin off

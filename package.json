@@ -1,5 +1,5 @@
 {
-  "name": "nutrimat",
+  "name": "coffinat",
   "version": "0.1.0",
   "private": true,
   "description": "A static single-page caffeine planner. Pure model in model.js, tested with node --test.",

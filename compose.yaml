@@ -1,4 +1,4 @@
-# Nutrimat — one static-site service behind Caddy.
+# Coffinat — one static-site service behind Caddy.
 #   podman compose up -d --build     # start on http://localhost:8080
 #   podman compose down              # stop (no data volume — nothing to lose)
 # `docker compose …` works identically.
@@ -7,8 +7,8 @@ services:
     build:
       context: .
       dockerfile: Containerfile
-    image: nutrimat:latest
-    container_name: nutrimat
+    image: coffinat:latest
+    container_name: coffinat
     # Loopback only by default: this is a personal planner, not a public service. Put it behind a
     # TLS-terminating reverse proxy if you want it reachable from your network.
     ports:

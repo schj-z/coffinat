@@ -1,4 +1,4 @@
-/* Nutrimat — drink presets (average caffeine in mg; editable per entry). Sources in README. */
+/* Coffinat — drink presets (average caffeine in mg; editable per entry). Sources in README. */
 
 export const PRESETS = [
   { id: 'filter', label: 'Filter coffee (240 ml)', mg: 95 },

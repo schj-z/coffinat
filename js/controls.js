@@ -1,4 +1,4 @@
-/* Nutrimat — the global controls: body profile (mass + half-life slider), the forecast plan, and
+/* Coffinat — the global controls: body profile (mass + half-life slider), the forecast plan, and
    the sleep goal. These are not per-day; they persist across the calendar. */
 import * as util from './util.js'
 import * as presets from './presets.js'

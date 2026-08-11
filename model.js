@@ -1,5 +1,5 @@
 /*
- * Nutrimat — core logic (PURE). No DOM, no localStorage, no clock (Date.now()).
+ * Coffinat — core logic (PURE). No DOM, no localStorage, no clock (Date.now()).
  * Numbers in, numbers out. This is the whole "business logic", kept here so it can be
  * unit-tested (model.test.js, `node --test`) and reasoned about in one place.
  *

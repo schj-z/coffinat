@@ -1,4 +1,4 @@
-/* Nutrimat — the per-day drink list: add, edit mg/time, hide (exclude without deleting), remove. */
+/* Coffinat — the per-day drink list: add, edit mg/time, hide (exclude without deleting), remove. */
 import * as util from './util.js'
 import * as presets from './presets.js'
 import { summaryText } from './brew.js'

@@ -1,4 +1,4 @@
-/* Nutrimat — small shared helpers (impure side: DOM, clock, formatting). */
+/* Coffinat — small shared helpers (impure side: DOM, clock, formatting). */
 import * as M from '../model.js'
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

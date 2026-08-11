@@ -1,4 +1,4 @@
-/* Nutrimat — the home-brew calculator dialog. Turns grounds + water + method + time + serving into
+/* Coffinat — the home-brew calculator dialog. Turns grounds + water + method + time + serving into
    a dose in mg (via the pure model) and writes it onto the target entry or the forecast plan. */
 import * as M from '../model.js'
 import { num } from './util.js'

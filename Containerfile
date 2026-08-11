@@ -1,4 +1,4 @@
-# Nutrimat — a static site served by Caddy. Pinned base (not :latest) for reproducibility.
+# Coffinat — a static site served by Caddy. Pinned base (not :latest) for reproducibility.
 # Podman-friendly (also builds with Docker). Only the site files are copied in.
 FROM docker.io/library/caddy:2.10-alpine
 

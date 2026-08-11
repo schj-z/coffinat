@@ -1,4 +1,4 @@
-/* Nutrimat — design tokens, layout and components.
+/* Coffinat — design tokens, layout and components.
    Adapted from the Saldomat token system; re-hued green → coffee/amber.
    Light and dark are both first-class. */
 
@@ -9,7 +9,7 @@
   --text: #241c15;
   --text-muted: #6f6459;
 
-  /* Coffee/amber: Nutrimat's identity. */
+  /* Coffee/amber: Coffinat's identity. */
   --accent: #9c5a2c;
   --accent-soft: #f1e3d3;
   --accent-text: #ffffff;

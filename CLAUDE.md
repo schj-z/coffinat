@@ -1,4 +1,4 @@
-# Nutrimat — conventions for agents
+# Coffinat — conventions for agents
 
 A small, single-page **caffeine planner**. Enter your body mass, log the caffeinated drinks you had
 and when, and see a graph of your estimated **blood caffeine concentration (mg/L)** across the day —
@@ -44,7 +44,7 @@ so you can plan around a daily limit and your bedtime.
    (custom product names, etc.) reaches the DOM via `textContent`, never string-built `innerHTML`.
 
 6. **Data model: the drink log is per calendar day; profile, plan and sleep goal are global.**
-   `localStorage` key `nutrimat.v2` holds `{ profile, sleep, plan, days: { 'YYYY-MM-DD': { log } },
+   `localStorage` key `coffinat.v2` holds `{ profile, sleep, plan, days: { 'YYYY-MM-DD': { log } },
    selectedDate }`. Dates are plain local `YYYY-MM-DD` strings — never round-trip a day through UTC.
    A corrupt saved value must reset to defaults, not throw.
 

@@ -1,4 +1,4 @@
-/* Nutrimat — the ECharts line chart. Given precomputed series it draws them; it owns the sampling
+/* Coffinat — the ECharts line chart. Given precomputed series it draws them; it owns the sampling
    resolution and the styling only. */
 import * as M from '../model.js'
 import { cssVar } from './util.js'

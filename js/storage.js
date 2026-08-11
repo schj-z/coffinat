@@ -1,10 +1,12 @@
-/* Nutrimat — persistence. State lives in localStorage. The drink LOG is per calendar day; the
+/* Coffinat — persistence. State lives in localStorage. The drink LOG is per calendar day; the
    profile, forecast plan and sleep goal are global. Nothing leaves the browser. */
 import * as M from '../model.js'
 import { todayKey } from './util.js'
 
-export const KEY = 'nutrimat.v2'
-const OLD_KEY = 'nutrimat.v1' // single-day layout shipped in the first version
+export const KEY = 'coffinat.v2'
+// Pre-rename keys, read once so a user's existing saved data survives the rename.
+const LEGACY_V2 = 'nutrimat.v2' // same structure, previous name
+const LEGACY_V1 = 'nutrimat.v1' // original single-day layout
 
 function defaults() {
   return {
@@ -43,16 +45,23 @@ export function load() {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) return coerce(JSON.parse(raw))
-    const oldRaw = localStorage.getItem(OLD_KEY)
-    if (oldRaw) {
-      const migrated = migrateV1(JSON.parse(oldRaw))
-      save(migrated) // write forward under the new key; leave v1 in place as a backup
+    // Adopt data saved under the previous name, newest layout first. Left in place as a backup.
+    const legacyV2 = localStorage.getItem(LEGACY_V2)
+    if (legacyV2) {
+      const s = coerce(JSON.parse(legacyV2))
+      save(s)
+      return s
+    }
+    const legacyV1 = localStorage.getItem(LEGACY_V1)
+    if (legacyV1) {
+      const migrated = migrateV1(JSON.parse(legacyV1))
+      save(migrated)
       return migrated
     }
     return defaults()
   } catch (err) {
     // A corrupt value must not brick the app.
-    console.warn('Nutrimat: could not read saved state, starting fresh.', err)
+    console.warn('Coffinat: could not read saved state, starting fresh.', err)
     return defaults()
   }
 }
@@ -61,7 +70,7 @@ export function save(state) {
   try {
     localStorage.setItem(KEY, JSON.stringify(state))
   } catch (err) {
-    console.warn('Nutrimat: could not save state.', err)
+    console.warn('Coffinat: could not save state.', err)
   }
 }
 

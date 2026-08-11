@@ -1,13 +1,13 @@
-# Nutrimat
+# Coffinat
 
 A small, single-page **caffeine planner**. Enter your body mass, log what you drank and when, and see
 a graph of your estimated **blood caffeine concentration through the day** — so you can plan around a
 daily limit and get it low enough by bedtime to sleep.
 
-The name is a nod to the Nutrimatic drink dispenser from *The Hitchhiker's Guide to the Galaxy* —
+The name is a nod to the Coffinatic drink dispenser from *The Hitchhiker's Guide to the Galaxy* —
 except this one tries to get your coffee timing right.
 
-> **Not medical advice.** Nutrimat is an educational estimate built on population-average
+> **Not medical advice.** Coffinat is an educational estimate built on population-average
 > pharmacokinetics. Individual caffeine metabolism varies widely (genetics, smoking, pregnancy,
 > medication). Do not use it for medical or dosing decisions.
 
@@ -92,7 +92,7 @@ if you expose it. `HOST_PORT=8090 podman compose up -d` changes the published po
 
 There is **nothing to build** — the whole site is the static files at the repo root (`index.html`,
 `styles.css`, `model.js`, `favicon.svg`, `js/`, `vendor/`). Every path in the app is **relative**, so
-it works unchanged when served from a project subpath such as `…/nutrimat/`. You do **not** need the
+it works unchanged when served from a project subpath such as `…/coffinat/`. You do **not** need the
 container, `Caddyfile`, `Containerfile`, `compose.yaml`, `package.json` or `model.test.js` on the
 host; they are ignored by Pages and can stay in the repo.
 
@@ -260,5 +260,5 @@ imports it. See `CLAUDE.md` for the conventions.
 
 ## License
 
-Provided **as is, without warranty of any kind**. You use it, and any estimates it produces, at your
-own risk. Not medical advice.
+[MIT](LICENSE). Provided **as is, without warranty of any kind**. You use it, and any estimates it
+produces, at your own risk. Not medical advice.

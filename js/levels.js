@@ -1,4 +1,4 @@
-/* Nutrimat — the caffeine-level "traffic light": a ladder of effect bands (most intense at the top
+/* Coffinat — the caffeine-level "traffic light": a ladder of effect bands (most intense at the top
    → settled at the bottom) that marks where you are NOW, your ACTUAL peak, and (with the forecast
    on) your PREDICTED peak. Marker colours match the chart: amber = actual, teal = forecast. The
    bands, thresholds and tolerance live in model.js. */
