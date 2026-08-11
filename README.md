@@ -45,6 +45,17 @@ brewed yourself, from the grounds, water, method and time:
 It works out how much caffeine was extracted and the dose in your serving, then feeds it into the
 same model as any other drink.
 
+**A caffeine-level "traffic light".** A ladder (Settled → Alert → Energised → Overstimulated →
+Excessive → Hazardous) marks where you are **now**, your **actual peak** (amber, matching the chart's
+actual line) and — with the forecast on — your **predicted peak** (teal, matching the forecast line),
+with the symptoms that typically correlate to each band. A **tolerance** setting (none / light /
+moderate / strong) softens how strongly a level is felt — it shifts the ladder only, never the blood
+concentration. These are population averages and depend heavily on tolerance; regular users feel far
+less.
+
+**Yesterday carries over.** Each day's curve includes the residual caffeine from the previous days,
+so a late-evening coffee still shows in the next morning's level.
+
 **Three ways to plan:**
 
 1. **Daily limit.** Your running total is shown against the EFSA guideline of **400 mg/day** (and a
@@ -77,8 +88,123 @@ podman compose down              # stop
 filesystem, dropped Linux capabilities and no privilege escalation; put a TLS reverse proxy in front
 if you expose it. `HOST_PORT=8090 podman compose up -d` changes the published port.
 
-**GitHub Pages / any static host:** copy `index.html`, `styles.css`, `model.js`, `favicon.svg`,
-`js/` and `vendor/` to the host. There is nothing to build.
+## Deploy to GitHub Pages or GitLab Pages
+
+There is **nothing to build** — the whole site is the static files at the repo root (`index.html`,
+`styles.css`, `model.js`, `favicon.svg`, `js/`, `vendor/`). Every path in the app is **relative**, so
+it works unchanged when served from a project subpath such as `…/nutrimat/`. You do **not** need the
+container, `Caddyfile`, `Containerfile`, `compose.yaml`, `package.json` or `model.test.js` on the
+host; they are ignored by Pages and can stay in the repo.
+
+> One caveat: Pages serves plain files and cannot send the strict `Content-Security-Policy` and
+> security headers that the Caddy container does. The app still works fine — there are no secrets and
+> nothing cross-origin — you just don't get those response headers. (GitLab Pages can restore them via
+> a `_headers` file if you want; GitHub Pages cannot set headers.)
+
+### GitHub Pages
+
+The repo already contains an empty **`.nojekyll`** file, which tells GitHub to publish the files
+as‑is (no Jekyll build). Then, in the repository:
+
+1. Push to GitHub (default branch `main`).
+2. **Settings → Pages**.
+3. Under **Build and deployment**, set **Source = "Deploy from a branch"**, **Branch = `main`**,
+   **Folder = `/ (root)`**, and **Save**.
+4. Wait for the green check; your site is at `https://<user>.github.io/<repo>/`.
+
+Every push to `main` redeploys automatically. This branch source needs no CI at all.
+
+**Automate with GitHub Actions instead** — if you'd rather have CI run the model tests *before*
+publishing, switch **Settings → Pages → Source** to **"GitHub Actions"** and add
+**`.github/workflows/deploy.yml`**:
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual runs
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test # the model unit tests must pass before we deploy
+
+  deploy:
+    needs: test # don't publish a broken model
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble the static site
+        run: |
+          mkdir -p _site
+          cp -r index.html styles.css model.js favicon.svg js vendor _site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+With the Actions source you don't even need `.nojekyll` (the artifact is served verbatim). Only the
+assembled `_site/` is published, so the container files and tests never end up on the web.
+
+### GitLab Pages
+
+GitLab publishes whatever a CI job puts in a `public/` directory, so its deploy *is* CI. This
+**`.gitlab-ci.yml`** runs the model tests first, then publishes only the static files:
+
+```yaml
+stages: [test, deploy]
+
+test:
+  stage: test
+  image: node:20-alpine
+  script:
+    - node --test # model unit tests
+
+pages:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - mkdir -p public
+    - cp -r index.html styles.css model.js favicon.svg js vendor public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH # publish only from the default branch
+```
+
+`test` runs on every pipeline (including merge requests); `pages` publishes only from the default
+branch, and — being in a later stage — only after the tests pass. Push it and your site appears at
+`https://<namespace>.gitlab.io/<project>/` (see **Deploy → Pages** for the exact URL). To also send
+the security headers, add a `public/_headers` file in the `pages` job — GitLab Pages honours it.
+
+### Any other static host
+
+Copy those same files (`index.html`, `styles.css`, `model.js`, `favicon.svg`, `js/`, `vendor/`) to
+any web server. It must be served over HTTP(S) — the app uses native ES modules, so opening the bare
+`index.html` over `file://` will not load the scripts.
 
 ## The model
 
@@ -111,6 +237,8 @@ Constants are population averages from published pharmacology and coffee-chemist
   [EFSA caffeine assessment](https://www.efsa.europa.eu/sites/default/files/event/documentset/150305-p09.pdf).
 - Brewing — [Arabica vs Robusta & by method](https://simonandbearns.coffee/en/blogs/kaffeeblog/coffee-caffeine-content-arabica-vs-robusta-and-by-brewing-method);
   [how brew methods affect caffeine](https://dabov.us/blog/how-brewing-methods-affect-caffeine-content-in-coffee).
+- Effect / toxicity bands — [Caffeine Toxicity, StatPearls (NBK532910)](https://www.ncbi.nlm.nih.gov/books/NBK532910/):
+  therapeutic ≈4–8 mg/L, toxicity from ≈15 mg/L, ≈80–100 mg/L potentially lethal.
 
 The maths lives in `model.js` (with the equations and sources in its header) and is unit-tested:
 

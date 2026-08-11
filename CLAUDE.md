@@ -80,7 +80,8 @@ js/               ES modules, one per concern:
   storage.js        localStorage load/save/migrate; per-day getDay/hasData
   chart.js          ECharts option builder; owns the 1-min sampling (XS)
   brew.js           the home-brew calculator dialog
-  calendar.js       day navigation + month grid (dots days with data)
+  calendar.js       day navigation + pop-up month grid (dots days with data)
+  levels.js         caffeine-level ladder (traffic light) + projected-peak readout
   log.js            the per-day drink list (add / edit / hide / remove)
   controls.js       body profile (mass + half-life slider), plan, sleep goal
   app.js            orchestrator: state, api {commit, render, currentDay, openBrew, selectDate}
