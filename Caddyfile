@@ -18,6 +18,9 @@
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
 		X-Frame-Options "DENY"
+		# Always revalidate: the ES modules must never be served stale against fresh HTML, or a
+		# partial update mixes versions and throws. ETag makes this cheap (304 when unchanged).
+		Cache-Control "no-cache"
 		-Server
 	}
 }
