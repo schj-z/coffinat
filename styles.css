@@ -17,12 +17,21 @@
   /* Forecast (planned drink) — a distinct teal so it never reads as "just the same line". */
   --forecast: #1f7a86;
   --forecast-soft: #d6ebee;
+  --forecast-text: #ffffff;
 
   --warn: #8a5a00;
   --warn-soft: #fdf1d8;
   --danger: #a12d2d;
   --danger-soft: #f7dede;
   --ok: #2f7d4f;
+
+  /* Semantic severity ramp for the caffeine-level ladder (green → red), independent of the accent. */
+  --sev-minimal: #6b7280;
+  --sev-alert: #2f7d4f;
+  --sev-wired: #b7791f;
+  --sev-jittery: #c2410c;
+  --sev-toxic: #b91c1c;
+  --sev-severe: #7f1d1d;
 
   --radius: 0.6rem;
   --gap: 1rem;
@@ -46,12 +55,20 @@
 
     --forecast: #56b9c6;
     --forecast-soft: #123034;
+    --forecast-text: #08222b;
 
     --warn: #e0b25f;
     --warn-soft: #33291433;
     --danger: #e08585;
     --danger-soft: #3a1f1f;
     --ok: #6fbf90;
+
+    --sev-minimal: #9aa2af;
+    --sev-alert: #6fbf90;
+    --sev-wired: #e0b25f;
+    --sev-jittery: #f0925a;
+    --sev-toxic: #ef6a6a;
+    --sev-severe: #e05a5a;
   }
 }
 
@@ -222,6 +239,112 @@ a {
   letter-spacing: 0;
 }
 
+/* ─────────────────────────────────────────────── caffeine-level ladder */
+
+.levels__peak {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* The peak values are coloured to match their chart lines: amber = actual, teal = forecast. */
+.levels__peak-actual {
+  color: var(--accent);
+}
+
+.levels__peak-predicted {
+  color: var(--forecast);
+}
+
+.levels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.lvl-row {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  opacity: 0.5; /* inactive bands recede */
+}
+
+/* Per-band colour, set once so the bar, border and label can all reference it. */
+.lvl-row--minimal { --c: var(--sev-minimal); }
+.lvl-row--alert { --c: var(--sev-alert); }
+.lvl-row--wired { --c: var(--sev-wired); }
+.lvl-row--jittery { --c: var(--sev-jittery); }
+.lvl-row--toxic { --c: var(--sev-toxic); }
+.lvl-row--severe { --c: var(--sev-severe); }
+
+.lvl-row__bar {
+  flex: 0 0 5px;
+  align-self: stretch;
+  border-radius: 3px;
+  background: var(--c);
+}
+
+.lvl-row--active {
+  opacity: 1;
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 12%, var(--surface));
+}
+
+.lvl-row__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lvl-row__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lvl-row__label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.lvl-row--active .lvl-row__label {
+  color: var(--c);
+}
+
+.lvl-row__sym {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Markers match the chart lines: amber (accent) = actual / now, teal (forecast) = predicted. */
+.lvl-badge {
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.lvl-badge--now {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.lvl-badge--actual {
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+}
+
+.lvl-badge--predicted {
+  background: var(--forecast);
+  color: var(--forecast-text);
+}
+
 /* ─────────────────────────────────────────────────────────────── chart */
 
 .chart {
@@ -296,6 +419,11 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--gap);
   align-items: end;
+}
+
+/* Top-align instead of baseline-at-bottom (e.g. the "You" card, where the slider field is taller). */
+.fields--top {
+  align-items: start;
 }
 
 .field {
@@ -395,7 +523,10 @@ input[aria-invalid='true'] {
 
 /* An icon-only remove button that reads as a quiet control. */
 .icon-button {
-  padding: 0.35rem 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -406,7 +537,17 @@ input[aria-invalid='true'] {
   cursor: pointer;
 }
 
+.icon-button svg {
+  display: block;
+}
+
 .icon-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Destructive actions (remove) go red; a non-destructive toggle (hide) does not. */
+.icon-button--danger:hover {
   border-color: var(--danger);
   color: var(--danger);
 }
@@ -500,23 +641,82 @@ input[type='range'] {
 
 /* ────────────────────────────────────────────────────────────── calendar */
 
-.cal-nav {
+/* The card is just a compact day-nav row; the month grid pops up from the date button. */
+.calendar {
+  position: relative;
+}
+
+.daynav {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
-.cal-nav__date {
+.daynav__step {
+  display: grid;
+  place-items: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.daynav__step:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The date itself is a button that opens the month grid. */
+.daynav__label {
   flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
 
-.cal-month {
-  margin-top: var(--gap);
-  padding-top: var(--gap);
-  border-top: 1px solid var(--border);
+.daynav__label:hover {
+  border-color: var(--accent);
+}
+
+.daynav__caret {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* The month grid, floating under the date button so it never reflows the page. */
+.daypicker {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% - var(--gap) + 0.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(18rem, calc(100vw - 3rem));
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 0.8rem 1.8rem rgb(0 0 0 / 22%);
+}
+
+.daypicker[hidden] {
+  display: none;
 }
 
 .cal-month__head {

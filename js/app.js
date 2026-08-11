@@ -9,6 +9,7 @@ import * as brew from './brew.js'
 import * as calendar from './calendar.js'
 import * as log from './log.js'
 import * as controls from './controls.js'
+import * as levels from './levels.js'
 
 let state = storage.load()
 
@@ -50,34 +51,45 @@ function setValue(el, value, unit, cls) {
   if (cls) el.classList.add(cls)
 }
 
+// How many previous days of caffeine to carry into the current day. Even at a long half-life,
+// two days back is negligible (2 half-lives ≈ a quarter left per day), so this captures it all.
+const CARRY_DAYS = 2
+
 function render() {
   const day = storage.getDay(state, state.selectedDate)
-  const active = day.log.filter((e) => !e.hidden)
-  const actualDoses = util.toDoses(active)
+  const viewActive = day.log.filter((e) => !e.hidden) // this day's own drinks (for the consumed total + log)
+  // Doses driving the curve include the previous days' residual, anchored to this day's midnight.
+  const actualDoses = util.dayDoses(state, state.selectedDate, CARRY_DAYS)
 
   const planValid = state.plan.enabled && M.parseClockToMinutes(state.plan.time) != null && util.num(state.plan.mg) > 0
   const plannedDose = planValid
-    ? { mg: util.num(state.plan.mg), absMin: M.clockToWindowAbs(M.parseClockToMinutes(state.plan.time)) }
+    ? { mg: util.num(state.plan.mg), absMin: M.parseClockToMinutes(state.plan.time) }
     : null
   const effectiveDoses = plannedDose ? actualDoses.concat([plannedDose]) : actualDoses
 
   const actualSeries = M.concentrationSeriesMgL(actualDoses, state.profile, chart.XS)
   const forecastSeries = plannedDose ? M.concentrationSeriesMgL(effectiveDoses, state.profile, chart.XS) : null
 
+  // Peaks: the most you reach from what's actually logged, and — with the forecast on — the most
+  // you'd reach if you also had the planned drink.
+  const actualPeak = seriesPeak(actualSeries)
+  const predictedPeak = forecastSeries ? seriesPeak(forecastSeries) : null
+
   const isToday = state.selectedDate === util.todayKey()
-  const nowAbsRaw = M.clockToWindowAbs(util.nowMinutes())
+  const nowAbsRaw = util.nowMinutes()
   const nowInWindow = isToday && nowAbsRaw >= M.WINDOW_START_MIN && nowAbsRaw <= M.WINDOW_START_MIN + M.WINDOW_MINUTES
+  const nowVal = isToday ? M.concentrationAtMgL(actualDoses, nowAbsRaw, state.profile) : null
 
   // Summary — "now" only makes sense for today; other days show the day's peak instead.
   if (isToday) {
     els.nowLabel.textContent = 'Caffeine in blood now'
-    setValue(els.now, M.concentrationAtMgL(actualDoses, nowAbsRaw, state.profile).toFixed(2), 'mg/L')
+    setValue(els.now, nowVal.toFixed(2), 'mg/L')
   } else {
     els.nowLabel.textContent = 'Peak this day'
-    setValue(els.now, Math.max(0, ...actualSeries).toFixed(2), 'mg/L')
+    setValue(els.now, actualPeak.val.toFixed(2), 'mg/L')
   }
 
-  const todayTotal = active.reduce((s, e) => s + Math.max(util.num(e.mg), 0), 0)
+  const todayTotal = viewActive.reduce((s, e) => s + Math.max(util.num(e.mg), 0), 0)
   const overLimit = todayTotal > M.DAILY_LIMIT_MG
   setValue(els.today, Math.round(todayTotal), '/ ' + M.DAILY_LIMIT_MG + ' mg', overLimit ? 'summary__value--over' : null)
   els.todayNote.textContent = overLimit
@@ -85,7 +97,7 @@ function render() {
     : 'Guideline: up to ' + M.DAILY_LIMIT_MG + ' mg/day, ' + M.SINGLE_DOSE_CAUTION_MG + ' mg per dose.'
 
   const bedMin = M.parseClockToMinutes(state.sleep.time)
-  const bedAbs = bedMin != null ? M.clockToWindowAbs(bedMin) : null
+  const bedAbs = bedMin != null ? bedMin : null
   const bedVal = bedAbs != null ? M.concentrationAtMgL(effectiveDoses, bedAbs, state.profile) : 0
   els.bedLabel.textContent = 'At bedtime (' + (state.sleep.time || '—') + ')'
   const bedOver = bedVal > state.sleep.thresholdMgL
@@ -108,8 +120,27 @@ function render() {
     bedAbs: bedAbs,
     nowAbs: nowInWindow ? nowAbsRaw : null,
   })
+  levels.update({
+    nowVal: nowVal,
+    factor: M.toleranceFactor(state.profile.tolerance),
+    actual: actualPeak,
+    predicted: predictedPeak,
+  })
   calendar.render(api)
   log.render(api)
+}
+
+/** The maximum of a concentration series and the minute at which it occurs. */
+function seriesPeak(series) {
+  let val = 0
+  let min = null
+  for (let i = 0; i < series.length; i++) {
+    if (series[i] > val) {
+      val = series[i]
+      min = chart.XS[i]
+    }
+  }
+  return { val: val, min: min }
 }
 
 function init() {
@@ -126,6 +157,7 @@ function init() {
   brew.init(api)
   calendar.init(api)
   log.init(api)
+  levels.init()
   render()
 }
 

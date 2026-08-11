@@ -7,6 +7,24 @@ let api = null
 let listEl = null
 let titleEl = null
 
+const SVGNS = 'http://www.w3.org/2000/svg'
+function svgEl(tag, attrs) {
+  const n = document.createElementNS(SVGNS, tag)
+  for (const k in attrs) n.setAttribute(k, attrs[k])
+  return n
+}
+/** A monochrome eye (visible) / eye with a slash (hidden), inheriting the button's currentColor. */
+function eyeIcon(hidden) {
+  const svg = svgEl('svg', {
+    viewBox: '0 0 24 24', width: '16', height: '16', fill: 'none', stroke: 'currentColor',
+    'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true',
+  })
+  svg.appendChild(svgEl('path', { d: 'M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12Z' }))
+  svg.appendChild(svgEl('circle', { cx: '12', cy: '12', r: '3' }))
+  if (hidden) svg.appendChild(svgEl('line', { x1: '3.5', y1: '3.5', x2: '20.5', y2: '20.5' }))
+  return svg
+}
+
 function makeEntryRow(entry) {
   const row = document.createElement('div')
   row.className = 'entry' + (entry.hidden ? ' entry--hidden' : '')
@@ -66,7 +84,7 @@ function makeEntryRow(entry) {
   hide.title = entry.hidden ? 'Show in calculation' : 'Hide from calculation'
   hide.setAttribute('aria-label', hide.title)
   hide.setAttribute('aria-pressed', entry.hidden ? 'true' : 'false')
-  hide.textContent = entry.hidden ? '🙈' : '👁'
+  hide.appendChild(eyeIcon(entry.hidden))
   hide.addEventListener('click', () => {
     entry.hidden = !entry.hidden
     api.commit()
@@ -75,7 +93,7 @@ function makeEntryRow(entry) {
 
   const remove = document.createElement('button')
   remove.type = 'button'
-  remove.className = 'icon-button'
+  remove.className = 'icon-button icon-button--danger'
   remove.title = 'Remove'
   remove.setAttribute('aria-label', 'Remove drink')
   remove.textContent = '✕'

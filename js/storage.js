@@ -9,7 +9,7 @@ const OLD_KEY = 'nutrimat.v1' // single-day layout shipped in the first version
 function defaults() {
   return {
     version: 2,
-    profile: { massKg: 70, halfLifeH: M.PK.DEFAULT_HALFLIFE_H },
+    profile: { massKg: 70, halfLifeH: M.PK.DEFAULT_HALFLIFE_H, tolerance: 'moderate' },
     sleep: { thresholdMgL: 1.5, time: '23:00' },
     plan: { presetId: 'filter', label: 'Filter coffee (240 ml)', mg: 95, time: '20:00', enabled: false, brew: null },
     days: {}, // 'YYYY-MM-DD' -> { log: [ entries ] }

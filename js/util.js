@@ -46,15 +46,33 @@ export function formatLong(key) {
   return WEEKDAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear()
 }
 
-/** Turn log/plan-shaped entries into model doses {mg, absMin}; drop hidden and invalid ones. */
-export function toDoses(entries) {
+/**
+ * Turn log/plan-shaped entries into model doses {mg, absMin}; drop hidden and invalid ones.
+ * `offsetMin` shifts the whole day onto another day's midnight-anchored timeline (negative for a
+ * prior day), which is how earlier-day caffeine carries over.
+ */
+export function toDoses(entries, offsetMin = 0) {
   const doses = []
   for (const e of entries) {
     if (e.hidden) continue
     const min = M.parseClockToMinutes(e.time)
     const mg = num(e.mg)
     if (min == null || !(mg > 0)) continue
-    doses.push({ mg: mg, absMin: M.clockToWindowAbs(min) })
+    doses.push({ mg: mg, absMin: min + offsetMin })
+  }
+  return doses
+}
+
+/**
+ * All doses that affect `dateKey`: that day plus the previous `carryDays` days, each shifted onto a
+ * timeline anchored at `dateKey`'s midnight. Reads state.days directly so it never creates empty days.
+ */
+export function dayDoses(state, dateKey, carryDays) {
+  let doses = []
+  for (let back = carryDays; back >= 0; back--) {
+    const key = addDays(dateKey, -back)
+    const day = state.days[key]
+    if (day && Array.isArray(day.log)) doses = doses.concat(toDoses(day.log, -back * 1440))
   }
   return doses
 }

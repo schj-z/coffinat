@@ -2,6 +2,7 @@
    the sleep goal. These are not per-day; they persist across the calendar. */
 import * as util from './util.js'
 import * as presets from './presets.js'
+import { TOLERANCE_LEVELS } from '../model.js'
 
 let api = null
 let els = null
@@ -20,6 +21,7 @@ export function init(theApi) {
     mass: q('mass'),
     halflife: q('halflife'),
     halflifeValue: q('halflife-value'),
+    tolerance: q('tolerance'),
     planTime: q('plan-time'),
     planMg: q('plan-mg'),
     planEnabled: q('plan-enabled'),
@@ -31,6 +33,18 @@ export function init(theApi) {
     const v = util.num(els.mass.value)
     state.profile.massKg = v
     els.mass.setAttribute('aria-invalid', v > 0 ? 'false' : 'true')
+    api.commit()
+  })
+
+  // Tolerance: softens the effect ladder, not the pharmacokinetics.
+  for (const t of TOLERANCE_LEVELS) {
+    const o = document.createElement('option')
+    o.value = t.key
+    o.textContent = t.label
+    els.tolerance.appendChild(o)
+  }
+  els.tolerance.addEventListener('change', () => {
+    state.profile.tolerance = els.tolerance.value
     api.commit()
   })
 
@@ -97,6 +111,7 @@ export function sync() {
   els.mass.value = state.profile.massKg
   els.halflife.value = state.profile.halfLifeH
   updateHalfLifeLabel(state.profile.halfLifeH)
+  els.tolerance.value = state.profile.tolerance
   els.planTime.value = state.plan.time
   els.planMg.value = Math.round(util.num(state.plan.mg))
   els.planEnabled.checked = state.plan.enabled

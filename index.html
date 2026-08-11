@@ -50,6 +50,19 @@
         </div>
       </section>
 
+      <!-- Caffeine level (traffic light) -->
+      <section class="card" aria-label="Caffeine level">
+        <div class="card__head">
+          <h2>Caffeine level</h2>
+          <span class="levels__peak" id="levels-peak"></span>
+        </div>
+        <div id="levels-ladder" class="levels"></div>
+        <p class="field__hint">
+          Effects are population averages and depend heavily on your tolerance — regular users feel
+          far less. Not medical advice.
+        </p>
+      </section>
+
       <!-- Chart -->
       <section class="card" aria-label="Chart">
         <div class="card__head">
@@ -67,17 +80,23 @@
       <!-- You -->
       <section class="card" aria-label="Your body">
         <h2>You</h2>
-        <div class="fields">
+        <div class="fields fields--top">
           <label class="field">
             Body mass (kg)
             <input type="number" id="mass" min="1" step="1" inputmode="decimal" />
             <span class="field__hint">Sets your volume of distribution (≈0.6 L/kg).</span>
           </label>
           <label class="field">
-            Elimination half-life: <span id="halflife-value">5.0</span> h
+            <span>Elimination half-life: <span id="halflife-value">5.0</span> h</span>
             <input type="range" id="halflife" min="2" max="10" step="0.5" />
             <span class="field__hint">Default 5 h. Smoking shortens it; pregnancy and some
               medications lengthen it (up to ~8+ h).</span>
+          </label>
+          <label class="field">
+            Caffeine tolerance
+            <select id="tolerance"></select>
+            <span class="field__hint">Your usual intake. Adjusts only how strongly a level is felt on
+              the ladder below — not the blood concentration.</span>
           </label>
         </div>
       </section>
@@ -142,8 +161,9 @@
           Each drink is modelled with a one-compartment pharmacokinetic (Bateman) model: caffeine is
           absorbed over roughly the first ~45 minutes (so your level rises gradually, it does not jump)
           and then eliminated with a half-life of about 5 hours. Concentration is estimated in mg/L of
-          blood using a volume of distribution of ≈0.6 L/kg × your body mass. Constants are
-          population averages from published pharmacology; your own metabolism may differ substantially.
+          blood using a volume of distribution of ≈0.6 L/kg × your body mass. Each day also includes
+          the residual caffeine carried over from the previous days. Constants are population averages
+          from published pharmacology; your own metabolism may differ substantially.
         </p>
         <p><strong>Not medical advice.</strong> Educational estimate only.</p>
       </footer>

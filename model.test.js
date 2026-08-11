@@ -95,6 +95,37 @@ test('concentrationSeries length matches the sample points and is all finite', (
   assert.equal(s[0], 0) // exactly at intake, τ = 0
 })
 
+// ────────────────────────────────────────────────────────────── effect levels
+
+test('effectLevel maps concentrations to the right band, including boundaries', () => {
+  assert.equal(M.effectLevel(0).key, 'minimal')
+  assert.equal(M.effectLevel(0.5).key, 'minimal')
+  assert.equal(M.effectLevel(1).key, 'alert') // band is [1, 4)
+  assert.equal(M.effectLevel(2).key, 'alert')
+  assert.equal(M.effectLevel(5).key, 'wired')
+  assert.equal(M.effectLevel(8).key, 'jittery')
+  assert.equal(M.effectLevel(20).key, 'toxic')
+  assert.equal(M.effectLevel(100).key, 'severe')
+})
+
+test('tolerance softens the band a concentration lands in', () => {
+  assert.equal(M.effectLevel(8).key, 'jittery') // no tolerance: 8 mg/L is overstimulated
+  const strong = M.toleranceFactor('strong') // 2.3 → 8/2.3 ≈ 3.5 mg/L equivalent
+  assert.equal(M.effectLevel(8, strong).key, 'alert')
+  assert.ok(strong > M.toleranceFactor('none'))
+  assert.equal(M.toleranceFactor('nonsense'), 1.0) // unknown key → no tolerance
+})
+
+test('effectLevel is total (never returns undefined) and monotonic in severity', () => {
+  const order = M.EFFECT_LEVELS.map((l) => l.key)
+  let last = -1
+  for (const mgL of [0, 0.9, 3, 7, 14, 39, 500]) {
+    const idx = order.indexOf(M.effectLevel(mgL).key)
+    assert.ok(idx >= last, 'severity must not decrease as concentration rises')
+    last = idx
+  }
+})
+
 // ────────────────────────────────────────────────────────────── home-brew extraction
 
 test('French-press sanity: 18 g Arabica, 250 ml, 4 min, 200 ml serving ≈ 200 mg', () => {
@@ -135,7 +166,11 @@ test('clock parsing round-trips and rejects garbage', () => {
   assert.equal(M.minutesToClock(1440 + 90), '01:30')
 })
 
-test('clockToWindowAbs places pre-04:00 times into the late hours of the window', () => {
-  assert.equal(M.clockToWindowAbs(8 * 60), 8 * 60) // 08:00 stays
-  assert.equal(M.clockToWindowAbs(2 * 60), 2 * 60 + 1440) // 02:00 → next early morning
+test('caffeine from an earlier day carries over (a dose at a negative minute still contributes)', () => {
+  // Yesterday 22:00 is −120 min relative to today's midnight; at 07:00 (420) some remains.
+  const carried = M.concentrationAtMgL([{ mg: 200, absMin: -120 }], 420, PROFILE)
+  assert.ok(carried > 0, 'residual caffeine should carry into the morning')
+  // ...but less than the same dose taken fresh this morning at 06:00.
+  const fresh = M.concentrationAtMgL([{ mg: 200, absMin: 360 }], 420, PROFILE)
+  assert.ok(carried < fresh, 'the older dose has decayed more than a fresh one')
 })

@@ -115,6 +115,49 @@ export function concentrationSeriesMgL(doses, profile, xsMin) {
   })
 }
 
+// ──────────────────────────────────────────────────────────── effect levels (traffic light)
+
+// Approximate associations between total plasma caffeine concentration and effects — a "DEFCON"
+// escalation, NOT a clinical scale. Population-level and heavily tolerance-dependent (habitual
+// users feel far less). Anchored to the literature: typical therapeutic range ≈4–8 mg/L; toxicity
+// (CNS/cardiac stimulation, seizures, arrhythmia) from ≈15 mg/L; ≈80–100 mg/L potentially lethal.
+// Sources: Caffeine Toxicity, StatPearls (NBK532910); Pharmacology of Caffeine (NCBI NBK223808).
+export const EFFECT_LEVELS = [
+  { key: 'minimal', max: 1, label: 'Settled', symptoms: 'Little noticeable stimulation.' },
+  { key: 'alert', max: 4, label: 'Alert', symptoms: 'A pleasant lift — sharper alertness, focus and mood.' },
+  { key: 'wired', max: 8, label: 'Energised', symptoms: 'Strong stimulation. A faster heartbeat and some restlessness are common, and sleep suffers if this is near bedtime.' },
+  { key: 'jittery', max: 15, label: 'Overstimulated', symptoms: 'Wired and edgy — anxiety, tremor, palpitations and stomach upset become likely.' },
+  { key: 'toxic', max: 40, label: 'Excessive', symptoms: 'Into the toxicity range: marked anxiety, a racing or irregular heartbeat, nausea. Well beyond normal intake.' },
+  { key: 'severe', max: Infinity, label: 'Hazardous', symptoms: 'Severe toxicity risk — arrhythmia and seizures; around 80 mg/L can be lethal. Seek medical help.' },
+]
+
+// A subjective tolerance from habitual intake. It does not change the pharmacokinetics (how much
+// caffeine is in the blood) — only how strongly a given concentration is felt, so it scales the
+// thresholds of the ladder above.
+export const TOLERANCE_LEVELS = [
+  { key: 'none', label: 'None — I rarely have caffeine', factor: 1.0 },
+  { key: 'little', label: 'Light — a cup now and then', factor: 1.3 },
+  { key: 'moderate', label: 'Moderate — a few a day', factor: 1.7 },
+  { key: 'strong', label: 'Strong — a heavy daily habit', factor: 2.3 },
+]
+
+/** Multiplier for the effect thresholds from a tolerance key (defaults to 1 = no tolerance). */
+export function toleranceFactor(key) {
+  const t = TOLERANCE_LEVELS.find((x) => x.key === key)
+  return t ? t.factor : 1.0
+}
+
+/**
+ * The effect band a concentration (mg/L) falls in, softened by a tolerance `factor` (higher = more
+ * tolerant → needs more caffeine to feel the same). factor defaults to 1 (no tolerance).
+ */
+export function effectLevel(mgL, factor) {
+  const f = factor > 0 ? factor : 1
+  const v = (mgL > 0 ? mgL : 0) / f
+  for (const lvl of EFFECT_LEVELS) if (v < lvl.max) return lvl
+  return EFFECT_LEVELS[EFFECT_LEVELS.length - 1]
+}
+
 // ──────────────────────────────────────────────────────────── home-brew extraction
 
 export const BEAN_POOL_MG_PER_G = { arabica: 13, robusta: 24, blend: 16 }
@@ -159,9 +202,10 @@ export function brewCaffeine(input) {
 
 // ──────────────────────────────────────────────────────────── time / window helpers
 
-// The chart shows a 24 h window starting at 04:00, so a normal day and the evening's decay into
-// the small hours read left-to-right without a midnight split.
-export const WINDOW_START_MIN = 4 * 60
+// The chart shows one calendar day, midnight → midnight. Doses are placed on a timeline anchored at
+// this day's 00:00, so a dose taken on an earlier day sits at a negative minute and its residual
+// caffeine carries into this morning (the shell gathers the previous days — see util.dayDoses).
+export const WINDOW_START_MIN = 0
 export const WINDOW_MINUTES = 24 * 60
 
 /** 'HH:MM' → minutes since midnight (0..1439), or null if malformed. */
@@ -180,13 +224,4 @@ export function minutesToClock(min) {
   const h = Math.floor(m / 60)
   const mm = m % 60
   return String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0')
-}
-
-/**
- * Map a clock time (minutes since midnight) into absolute minutes on the plotting window that
- * starts at `startMin`: times before the start belong to the following early hours.
- */
-export function clockToWindowAbs(min, startMin) {
-  if (startMin === undefined) startMin = WINDOW_START_MIN
-  return min >= startMin ? min : min + 1440
 }
