@@ -58,8 +58,9 @@
         </div>
         <div id="levels-ladder" class="levels"></div>
         <p class="field__hint">
-          Effects are population averages and depend heavily on your tolerance — regular users feel
-          far less. Not medical advice.
+          The lower bands (Settled–Overstimulated) are illustrative: subjective effects map poorly
+          onto blood levels and depend heavily on tolerance — regular users feel far less. Only the
+          high toxicity ranges are anchored to clinical literature. Not medical advice.
         </p>
       </section>
 
@@ -91,8 +92,9 @@
           <label class="field">
             <span>Elimination half-life: <span id="halflife-value">5.0</span> h</span>
             <input type="range" id="halflife" min="2" max="10" step="0.5" />
-            <span class="field__hint">Default 5 h. Smoking shortens it; pregnancy and some
-              medications lengthen it (up to ~8+ h).</span>
+            <span class="field__hint">Default 5 h. Smoking often shortens it; pregnancy, liver disease
+              and some medicines can substantially lengthen it — occasionally to 10–15 h or more, beyond
+              this slider's range.</span>
           </label>
           <label class="field">
             Caffeine tolerance
@@ -142,10 +144,11 @@
       <section class="card" aria-label="Sleep goal">
         <h2>Sleep goal</h2>
         <p class="card__lead muted">
-          Set the level you want to be under by bedtime. As a rough guide, lower is better for sleep,
-          and caffeine taken within about six hours of bed can measurably disrupt it. There is no
-          established "safe" blood-caffeine level for sleep, so treat this as a personal target you
-          choose — not a recommendation. See <a href="#about">sources</a> below.
+          Set the level you want to be under by bedtime. Lower is better for sleep, and caffeine can
+          disrupt it hours after the last drink: in one controlled study a 400 mg dose still measurably
+          reduced sleep taken 6 h before bed, and EFSA notes ~100 mg near bedtime can affect some
+          adults. There is no established "safe" blood-caffeine level for sleep, so treat this as a
+          personal target you choose — not a recommendation. See <a href="#about">sources</a> below.
         </p>
         <div class="fields">
           <label class="field">
@@ -162,12 +165,15 @@
       <footer id="about" class="footnote muted">
         <h3>How this works</h3>
         <p>
-          Each drink is modelled with a one-compartment pharmacokinetic (Bateman) model: caffeine is
-          absorbed over roughly the first ~45 minutes (so your level rises gradually, it does not jump)
-          and then eliminated with a half-life of about 5 hours. Concentration is estimated in mg/L of
-          blood using a volume of distribution of ≈0.6 L/kg × your body mass. Each day also includes
-          the residual caffeine carried over from the previous days. Constants are population averages
-          from published pharmacology; your own metabolism may differ substantially.
+          Each drink is modelled with a one-compartment pharmacokinetic (Bateman) model. It uses a
+          first-order absorption rate chosen to give a typical peak around 30–60 minutes after a drink
+          (so your level rises gradually, it does not jump), then eliminates with a half-life of about
+          5 hours. The result is an estimate in mg/L that approximates the <em>plasma / serum</em>
+          concentrations reported in the pharmacokinetic literature — it is not a whole-blood
+          measurement, and "blood caffeine" on this page is friendly shorthand for that estimate. The
+          scale comes from a volume of distribution of ≈0.6 L/kg × your body mass. Each day also
+          includes the residual caffeine carried over from previous days. Constants are population
+          averages; your own metabolism may differ substantially.
         </p>
 
         <h3>Your privacy</h3>
@@ -206,17 +212,23 @@
           <li>
             Caffeine and sleep timing —
             <a href="https://doi.org/10.5664/jcsm.3170" target="_blank" rel="noopener noreferrer">Drake et al., <em>J. Clin. Sleep Med.</em> 2013</a>
-            (caffeine 0, 3 or 6 h before bed all disrupted sleep).
+            (a <strong>400 mg</strong> dose disrupted sleep even taken 6 h before bed); EFSA additionally
+            notes ~100 mg near bedtime can affect sleep in some adults.
           </li>
           <li>
-            Effect / toxicity bands —
+            Toxicity bands —
             <a href="https://www.ncbi.nlm.nih.gov/books/NBK532910/" target="_blank" rel="noopener noreferrer">Caffeine Toxicity, StatPearls (NBK532910)</a>
-            (therapeutic ≈4–8 mg/L, toxicity from ≈15 mg/L, ≈80–100 mg/L potentially lethal).
+            (toxicity from ≈15 mg/L, ≈80–100 mg/L potentially lethal). The lower "effect" bands on the
+            ladder are illustrative — subjective effects map poorly onto blood levels — and are not
+            taken from this source.
           </li>
           <li>
-            Brew extraction (bean pool, method efficiency) —
+            Brew extraction (bean pool, method efficiency) — practical brewing references, not
+            analytical studies:
             <a href="https://simonandbearns.coffee/en/blogs/kaffeeblog/coffee-caffeine-content-arabica-vs-robusta-and-by-brewing-method" target="_blank" rel="noopener noreferrer">Arabica vs Robusta &amp; by method</a>;
             <a href="https://dabov.us/blog/how-brewing-methods-affect-caffeine-content-in-coffee" target="_blank" rel="noopener noreferrer">how brew methods affect caffeine</a>.
+            The per-gram pools and method efficiencies are representative values, and the extraction-over-time
+            curve is a modelling assumption — not measurements from these pages.
           </li>
         </ul>
 
@@ -274,9 +286,10 @@
         </div>
         <div class="brew__result" id="brew-result" aria-live="polite"></div>
         <p class="field__hint">
-          A simplified estimate: it assumes near-boiling water (~93–96 °C) and models extraction as
-          reaching about 95% of its maximum within ~2 minutes. Real yields vary with grind, dose,
-          agitation and temperature. See <a href="#about">sources</a> below.
+          A rough, heuristic estimate — not a lab measurement. It assumes near-boiling water
+          (~93–96 °C) and uses representative caffeine-per-gram and method-dependent extraction values;
+          actual yields vary widely with grind, dose, agitation, temperature and contact time. See
+          <a href="#about">sources</a> below.
         </p>
         <div class="brew__actions">
           <button type="button" class="button button--quiet" id="brew-cancel">Cancel</button>
