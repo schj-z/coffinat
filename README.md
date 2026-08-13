@@ -68,6 +68,11 @@ so a late-evening coffee still shows in the next morning's level.
 3. **Sleep goal.** Set "be below *X* mg/L by *bedtime*". The chart draws your limit and bedtime, and
    flags you if the forecast would leave too much caffeine in your blood when you want to sleep.
 
+**Your data, in your hands.** A **Your data** card lets you **export** your whole drink log to a CSV
+file (to back it up or move it to another device), **import** one back (merging into, or replacing,
+what's there), and **delete everything** in one click. It's all local — the CSV is generated in your
+browser and saved via a normal download or the share sheet; nothing is uploaded.
+
 ## Run it
 
 **Quick preview** (any static server works):
@@ -282,8 +287,8 @@ node --test
 ## Layout
 
 ```
-index.html   styles.css   model.js   model.test.js   favicon.svg   package.json
-js/          util, presets, storage, chart, brew, calendar, log, controls, app  (one ES module each)
+index.html   styles.css   model.js   model.test.js   storage.test.js   favicon.svg   package.json
+js/          util, presets, storage, chart, brew, calendar, log, controls, levels, data, app  (one ES module each)
 vendor/      echarts.min.js
 Containerfile   Caddyfile   compose.yaml
 ```

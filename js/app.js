@@ -10,6 +10,7 @@ import * as calendar from './calendar.js'
 import * as log from './log.js'
 import * as controls from './controls.js'
 import * as levels from './levels.js'
+import * as data from './data.js'
 
 let state = storage.load()
 
@@ -35,6 +36,11 @@ const api = {
   selectDate(key) {
     state.selectedDate = key
     api.commit()
+  },
+  // Re-sync the global inputs from state — used after a bulk change (CSV import, delete-all) that the
+  // controls didn't originate, so the mass / half-life / plan / sleep fields reflect the new state.
+  refreshInputs() {
+    controls.sync()
   },
 }
 
@@ -210,6 +216,7 @@ function init() {
   calendar.init(api)
   log.init(api)
   levels.init()
+  data.init(api)
   render()
 }
 

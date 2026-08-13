@@ -170,6 +170,26 @@
         </div>
       </section>
 
+      <!-- Your data -->
+      <section class="card" aria-label="Your data">
+        <h2>Your data</h2>
+        <p class="card__lead muted">
+          Everything is stored only in this browser. Export your drink log to a CSV file to back it up
+          or move it to another device, import one back, or wipe everything.
+        </p>
+        <div class="data-actions">
+          <button type="button" class="button button--quiet" id="data-export">Export CSV</button>
+          <button type="button" class="button button--quiet" id="data-import">Import CSV…</button>
+          <button type="button" class="button button--danger" id="data-clear">Delete everything</button>
+          <input type="file" id="data-import-file" accept=".csv,text/csv" hidden />
+        </div>
+        <label class="inline-toggle">
+          <input type="checkbox" id="data-import-replace" />
+          Replace my current log on import (instead of adding to it)
+        </label>
+        <p class="data-status field__hint" id="data-status" role="status" aria-live="polite" hidden></p>
+      </section>
+
       <footer id="about" class="footnote muted">
         <h3>How this works</h3>
         <p>

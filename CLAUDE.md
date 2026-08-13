@@ -77,7 +77,8 @@ package.json      {"type":"module"} + the test script — config only, no depend
 js/               ES modules, one per concern:
   util.js           dates, formatting, cssVar, toDoses (filters hidden/invalid)
   presets.js        drink presets + the product <select> builder
-  storage.js        localStorage load/save/migrate; per-day getDay/hasData
+  storage.js        localStorage load/save/migrate; per-day getDay/hasData; CSV export/import + clearAll
+  data.js           the "Your data" card: CSV export (download/share), import (file), delete-everything
   chart.js          ECharts option builder; owns the 1-min sampling (XS)
   brew.js           the home-brew calculator dialog
   calendar.js       day navigation + pop-up month grid (dots days with data)

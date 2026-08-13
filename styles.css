@@ -589,6 +589,43 @@ input[type='date']::-webkit-date-and-time-value {
   font-size: 0.85rem;
 }
 
+/* Destructive action (delete everything): quiet until hovered, then red — hard to hit by accident. */
+.button--danger {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--danger);
+}
+
+.button--danger:hover {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  filter: none;
+}
+
+/* Data export/import/delete controls: wrap onto multiple rows on a narrow phone. */
+.data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.data-status {
+  margin: 0.6rem 0 0;
+}
+
+.data-status[data-kind='ok'] {
+  color: var(--ok);
+}
+
+.data-status[data-kind='warn'] {
+  color: var(--danger);
+}
+
+.data-status[hidden] {
+  display: none;
+}
+
 /* An icon-only remove button that reads as a quiet control. */
 .icon-button {
   display: inline-flex;
