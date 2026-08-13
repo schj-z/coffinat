@@ -17,23 +17,36 @@
  *
  * Constants (population averages — cited; individual metabolism varies widely):
  *   F  = 1.0        ~99–100% oral bioavailability, ~99% absorbed within 45 min, no first-pass.
- *   Vd = 0.6 L/kg   average adult (range 0.5–0.75); scaled by body mass → sets the mg/L scale.
+ *   Vd = 0.6 L/kg   representative adult; literature reports ~0.5–0.8, often ~0.6–0.7. 0.6 sits at
+ *                   the lower end, so it does not understate concentration. Scaled by mass → mg/L scale.
  *   ke = ln2/t½     t½ default 5 h (healthy-adult range ~2–8 h); dominant driver of the decline.
- *   ka = 4.9 /h     absorption t½ ≈ 8.5 min → peak ~45 min at t½ = 5 h (stays 39–50 min over the
- *                   3–8 h range). NOT the sometimes-cited 0.33/min ≈ 19.8/h, which would misplace
- *                   the peak at ~15 min against an observed t_max of 30–60 min.
+ *   ka = 4.9 /h     a CALIBRATED effective absorption constant (not a measured physiological rate):
+ *                   chosen so t_max ≈ 45 min at t½ = 5 h (stays 39–50 min over the 3–8 h range),
+ *                   compensating for gastric-emptying/formulation effects the 1-compartment model
+ *                   omits. NOT the sometimes-cited 0.33/min ≈ 19.8/h, which would misplace the peak
+ *                   at ~15 min against an observed t_max of 30–60 min.
  * Sources: StatPearls "Caffeine" (NBK519490); Alsabri et al., J. Caffeine Res. 2018; EFSA caffeine
  * PK dossier; Pharmacology of Caffeine (NCBI NBK223808).
  *
  * ── Home-brew extraction ──────────────────────────────────────────────────────────────────
  *   extracted(mg) = grounds(g) · poolPerGram(mg/g) · efficiency
- *   efficiency    = E_max(method) · (1 − e^(−k·t))          ~95% out within ~2 min (k ≈ 1.5/min)
- *   beverage(ml)  = water(ml) − retention(≈2 ml/g)·grounds  (grounds soak up water)
+ *   efficiency    = E_max(method) · (1 − e^(−k·t))          k is PER-METHOD (fast for hot immersion/
+ *                                                           drip, seconds for espresso, very slow for
+ *                                                           cold brew — otherwise a 12 h steep would
+ *                                                           look identical to a 2 min one)
+ *   beverage(ml)  = water(ml) − retention·grounds           retention ≈2 ml/g for filter/immersion;
+ *                                                           0 for espresso (enter the cup yield, not
+ *                                                           the boiler water — filter retention does
+ *                                                           not transfer to a pressurised puck)
  *   dose(mg)      = extracted / beverage · serving(ml)
  * Pools: Arabica ≈ 12–15 mg/g (1.2–1.5% by wt), Robusta ≈ 22–27 mg/g (2.2–2.7%). E_max: immersion
- * ≈0.95, drip/pour-over ≈0.85, espresso ≈0.80. Water assumed near-optimal (~93–96 °C).
- * Sources: Simon & Bearns roasters (Arabica vs Robusta & by method); Dabov (brew method vs
- * caffeine); Equipoise (French-press caffeine).
+ * ≈0.95, drip/pour-over ≈0.85, espresso ≈0.80. Hot water assumed near-optimal (~93–96 °C); cold brew
+ * uses a much slower k instead. These are REPRESENTATIVE values calibrated to typical brewed-coffee
+ * ranges, and the extraction-over-time curve is a modelling choice — NOT laboratory measurements, so
+ * the app surfaces a rough ±band (BREW_UNCERTAINTY_FRAC). Real yields vary with grind, dose,
+ * agitation, temperature, pressure and contact time.
+ * Sources (practical brewing references, not analytical studies): Simon & Bearns roasters (Arabica
+ * vs Robusta & by method); Dabov (brew method vs caffeine); Equipoise (French-press caffeine).
  *
  * This is an ES module: imported by the browser (js/*.js via <script type="module">) and by the
  * Node test runner (model.test.js).
@@ -57,9 +70,12 @@ export function keFromHalfLife(halfLifeH) {
   return Math.LN2 / halfLifeH
 }
 
-/** Time of peak concentration (hours after intake). Undefined when ka === ke. */
+/** Time of peak concentration (hours after intake). */
 export function tMaxHours(kaPerH, keH) {
-  if (Math.abs(kaPerH - keH) < 1e-9) return NaN
+  if (!(kaPerH > 0) || !(keH > 0)) return NaN
+  // At ka = ke the concentration is ∝ τ·e^(−ke·τ), whose maximum is at τ = 1/ke — a finite peak,
+  // not undefined. (The general formula is a 0/0 limit here.)
+  if (Math.abs(kaPerH - keH) < 1e-9) return 1 / keH
   return Math.log(kaPerH / keH) / (kaPerH - keH)
 }
 
@@ -119,8 +135,10 @@ export function concentrationSeriesMgL(doses, profile, xsMin) {
 
 // Approximate associations between total plasma caffeine concentration and effects — a "DEFCON"
 // escalation, NOT a clinical scale. Population-level and heavily tolerance-dependent (habitual
-// users feel far less). Anchored to the literature: typical therapeutic range ≈4–8 mg/L; toxicity
-// (CNS/cardiac stimulation, seizures, arrhythmia) from ≈15 mg/L; ≈80–100 mg/L potentially lethal.
+// users feel far less). The lower bands are ILLUSTRATIVE — subjective effects map poorly onto serum
+// levels, so treat Settled/Alert/Energised/Overstimulated as a rough narrative, not a clinical scale.
+// Only the high end is anchored to toxicology: toxicity (CNS/cardiac stimulation, seizures,
+// arrhythmia) from ≈15 mg/L; ≈80–100 mg/L potentially lethal.
 // Sources: Caffeine Toxicity, StatPearls (NBK532910); Pharmacology of Caffeine (NCBI NBK223808).
 export const EFFECT_LEVELS = [
   { key: 'minimal', max: 1, label: 'Settled', symptoms: 'Little noticeable stimulation.' },
@@ -131,9 +149,16 @@ export const EFFECT_LEVELS = [
   { key: 'severe', max: Infinity, label: 'Hazardous', symptoms: 'Severe toxicity risk — arrhythmia and seizures; around 80 mg/L can be lethal. Seek medical help.' },
 ]
 
-// A subjective tolerance from habitual intake. It does not change the pharmacokinetics (how much
-// caffeine is in the blood) — only how strongly a given concentration is felt, so it scales the
-// thresholds of the ladder above.
+// At or above this concentration the effect is treated as physiological TOXICITY — a property of the
+// blood level itself, not of habit. Tolerance must never soften it (see effectLevel). Matches the top
+// of the 'jittery' band: ≈15 mg/L is where the toxicology literature puts the onset of concern.
+export const TOXIC_THRESHOLD_MGL = 15
+
+// A subjective tolerance from habitual intake. HEURISTIC, not measured: real tolerance is
+// effect-specific (you may habituate to the cardiovascular response yet still lose sleep) and
+// time-dependent, so these factors are a coarse "feels-like" dial, not biological constants. Tolerance
+// changes only how strongly a sub-toxic concentration is FELT — never the pharmacokinetics, and never
+// the toxicity bands.
 export const TOLERANCE_LEVELS = [
   { key: 'none', label: 'None — I rarely have caffeine', factor: 1.0 },
   { key: 'little', label: 'Light — a cup now and then', factor: 1.3 },
@@ -148,12 +173,18 @@ export function toleranceFactor(key) {
 }
 
 /**
- * The effect band a concentration (mg/L) falls in, softened by a tolerance `factor` (higher = more
- * tolerant → needs more caffeine to feel the same). factor defaults to 1 (no tolerance).
+ * The effect band a concentration (mg/L) falls in.
+ *
+ * Tolerance softens only the SUBJECTIVE bands: a habitual user feels a given sub-toxic level less, so
+ * we divide by `factor` before classifying. It must NOT touch toxicity — a potentially lethal blood
+ * level is lethal regardless of habit — so at or above TOXIC_THRESHOLD_MGL the raw concentration
+ * governs and `factor` is ignored. (Without this guard a "strong"-tolerance user at 80 mg/L, a
+ * potentially lethal level, would be scaled to 80/2.3 ≈ 35 mg/L and mislabelled two bands too low.)
  */
 export function effectLevel(mgL, factor) {
-  const f = factor > 0 ? factor : 1
-  const v = (mgL > 0 ? mgL : 0) / f
+  const c = mgL > 0 ? mgL : 0
+  const f = c >= TOXIC_THRESHOLD_MGL || !(factor > 0) ? 1 : factor
+  const v = c / f
   for (const lvl of EFFECT_LEVELS) if (v < lvl.max) return lvl
   return EFFECT_LEVELS[EFFECT_LEVELS.length - 1]
 }
@@ -162,21 +193,31 @@ export function effectLevel(mgL, factor) {
 
 export const BEAN_POOL_MG_PER_G = { arabica: 13, robusta: 24, blend: 16 }
 
+// kPerMin: how fast extraction approaches E_max (a modelling rate, not measured). Hot immersion/drip
+// are front-loaded (~95% in ~2 min); espresso is faster still under pressure; cold brew is far slower,
+// so its 12 h steep is meaningfully different from a short one. retentionMlPerG: water held back by the
+// bed — ~2 ml/g for filter/immersion, but 0 for espresso, where you enter the cup yield directly (the
+// filter-retention rule does not transfer to a pressurised puck and would otherwise drive volume to 0).
 export const BREW_METHODS = {
-  frenchpress: { label: 'French press', emax: 0.95, defaultTimeMin: 4 },
-  pourover: { label: 'Pour-over', emax: 0.85, defaultTimeMin: 3 },
-  drip: { label: 'Drip machine', emax: 0.85, defaultTimeMin: 5 },
-  espresso: { label: 'Espresso', emax: 0.8, defaultTimeMin: 0.5 },
-  moka: { label: 'Moka pot', emax: 0.85, defaultTimeMin: 1.5 },
-  coldbrew: { label: 'Cold brew', emax: 0.85, defaultTimeMin: 720 },
+  frenchpress: { label: 'French press', emax: 0.95, defaultTimeMin: 4, kPerMin: 1.5, retentionMlPerG: 2 },
+  pourover: { label: 'Pour-over', emax: 0.85, defaultTimeMin: 3, kPerMin: 1.5, retentionMlPerG: 2 },
+  drip: { label: 'Drip machine', emax: 0.85, defaultTimeMin: 5, kPerMin: 1.5, retentionMlPerG: 2 },
+  espresso: { label: 'Espresso', emax: 0.8, defaultTimeMin: 0.5, kPerMin: 5, retentionMlPerG: 0 },
+  moka: { label: 'Moka pot', emax: 0.85, defaultTimeMin: 1.5, kPerMin: 2, retentionMlPerG: 2 },
+  coldbrew: { label: 'Cold brew', emax: 0.85, defaultTimeMin: 720, kPerMin: 0.006, retentionMlPerG: 2 },
 }
 
-export const EXTRACTION_K_PER_MIN = 1.5 // ~95% of E_max reached by ~2 min
-export const GROUNDS_RETENTION_ML_PER_G = 2 // water soaked up by spent grounds
+export const EXTRACTION_K_PER_MIN = 1.5 // fallback rate (hot immersion/drip); methods override via kPerMin
+export const GROUNDS_RETENTION_ML_PER_G = 2 // default water soaked up by spent grounds (ml per g)
+
+// Brew estimates carry large real-world uncertainty (grind, dose, agitation, temperature, pressure,
+// contact time), so the app shows a rough ±band rather than a falsely precise single figure. Heuristic.
+export const BREW_UNCERTAINTY_FRAC = 0.35
 
 /**
  * Caffeine produced by a home brew and the dose in one serving.
- * Returns { extractedMg, beverageMl, concentrationMgPerMl, doseMg, efficiency }.
+ * Returns { extractedMg, beverageMl, concentrationMgPerMl, doseMg, doseMgLow, doseMgHigh, efficiency }.
+ * doseMgLow/doseMgHigh bracket doseMg by ±BREW_UNCERTAINTY_FRAC — a rough band, not a confidence interval.
  */
 export function brewCaffeine(input) {
   const method = BREW_METHODS[input.method] || BREW_METHODS.frenchpress
@@ -187,17 +228,29 @@ export function brewCaffeine(input) {
   const serving = Number(input.servingMl)
 
   if (!(grounds > 0) || !(water > 0)) {
-    return { extractedMg: 0, beverageMl: 0, concentrationMgPerMl: 0, doseMg: 0, efficiency: 0 }
+    return { extractedMg: 0, beverageMl: 0, concentrationMgPerMl: 0, doseMg: 0, doseMgLow: 0, doseMgHigh: 0, efficiency: 0 }
   }
 
-  const efficiency = method.emax * (1 - Math.exp(-EXTRACTION_K_PER_MIN * timeMin))
+  // Per-method extraction rate and bed retention (fall back to the hot-immersion defaults).
+  const k = method.kPerMin > 0 ? method.kPerMin : EXTRACTION_K_PER_MIN
+  const retention = method.retentionMlPerG >= 0 ? method.retentionMlPerG : GROUNDS_RETENTION_ML_PER_G
+
+  const efficiency = method.emax * (1 - Math.exp(-k * timeMin))
   const extractedMg = grounds * pool * efficiency
-  const beverageMl = Math.max(water - GROUNDS_RETENTION_ML_PER_G * grounds, 1)
+  const beverageMl = Math.max(water - retention * grounds, 1)
   const concentrationMgPerMl = extractedMg / beverageMl
   // You cannot drink more than you brewed: cap the serving at the beverage volume.
   const drunkMl = serving > 0 ? Math.min(serving, beverageMl) : 0
   const doseMg = concentrationMgPerMl * drunkMl
-  return { extractedMg, beverageMl, concentrationMgPerMl, doseMg, efficiency }
+  return {
+    extractedMg,
+    beverageMl,
+    concentrationMgPerMl,
+    doseMg,
+    doseMgLow: doseMg * (1 - BREW_UNCERTAINTY_FRAC),
+    doseMgHigh: doseMg * (1 + BREW_UNCERTAINTY_FRAC),
+    efficiency,
+  }
 }
 
 // ──────────────────────────────────────────────────────────── time / window helpers

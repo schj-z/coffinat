@@ -82,6 +82,23 @@ test('degenerate ka ≈ ke is finite (no NaN) and continuous with the general fo
   assert.ok(Math.abs(limit - near) < 1e-3, `limit ${limit} vs near ${near} should agree`)
 })
 
+test('tMaxHours at ka = ke is the finite 1/ke peak (τ·e^(−keτ)), not NaN', () => {
+  const ke = M.keFromHalfLife(5)
+  assert.ok(Math.abs(M.tMaxHours(ke, ke) - 1 / ke) < 1e-9, 'analytic equal-rate peak is 1/ke')
+  // ...and it matches a numeric scan of the equal-rate limit branch.
+  let best = 0
+  let bestTau = 0
+  for (let tau = 0; tau <= 20; tau += 0.001) {
+    const c = M.doseConcentrationMgL(100, tau, VD, ke, ke)
+    if (c > best) {
+      best = c
+      bestTau = tau
+    }
+  }
+  assert.ok(Math.abs(bestTau - 1 / ke) < 0.02, `numeric peak ${bestTau.toFixed(3)} vs 1/ke ${(1 / ke).toFixed(3)}`)
+  assert.ok(Number.isNaN(M.tMaxHours(0, ke)) && Number.isNaN(M.tMaxHours(ke, 0)), 'invalid rates → NaN')
+})
+
 test('no body mass → 0 (no volume of distribution), never NaN/Infinity', () => {
   const c = M.concentrationAtMgL([{ mg: 100, absMin: 0 }], 60, { massKg: 0, halfLifeH: 5 })
   assert.equal(c, 0)
@@ -108,12 +125,24 @@ test('effectLevel maps concentrations to the right band, including boundaries', 
   assert.equal(M.effectLevel(100).key, 'severe')
 })
 
-test('tolerance softens the band a concentration lands in', () => {
+test('tolerance softens the band a SUB-TOXIC concentration lands in', () => {
   assert.equal(M.effectLevel(8).key, 'jittery') // no tolerance: 8 mg/L is overstimulated
   const strong = M.toleranceFactor('strong') // 2.3 → 8/2.3 ≈ 3.5 mg/L equivalent
   assert.equal(M.effectLevel(8, strong).key, 'alert')
   assert.ok(strong > M.toleranceFactor('none'))
   assert.equal(M.toleranceFactor('nonsense'), 1.0) // unknown key → no tolerance
+})
+
+test('SAFETY: tolerance NEVER downgrades a toxic level — habit does not change lethality', () => {
+  const strong = M.toleranceFactor('strong') // 2.3
+  // 80 mg/L is potentially lethal; softening would put it two bands too low. It must not.
+  assert.equal(M.effectLevel(80, strong).key, 'severe')
+  // Anything at/above the toxic threshold ignores tolerance entirely.
+  assert.equal(M.effectLevel(20, strong).key, 'toxic')
+  assert.equal(M.effectLevel(M.TOXIC_THRESHOLD_MGL, strong).key, 'toxic')
+  // ...but just below it, softening is still allowed (14 raw = jittery → wired for a strong habit).
+  assert.equal(M.effectLevel(14).key, 'jittery')
+  assert.equal(M.effectLevel(14, strong).key, 'wired')
 })
 
 test('effectLevel is total (never returns undefined) and monotonic in severity', () => {
@@ -142,11 +171,33 @@ test('Robusta yields roughly twice the caffeine of Arabica, same brew', () => {
   assert.ok(Math.abs(rob / ara - 24 / 13) < 0.02, `ratio ${(rob / ara).toFixed(2)}`)
 })
 
-test('extraction saturates: past ~2 min more time barely changes the yield', () => {
+// Parameter regression (not measured coffee science): locks in the front-loaded HOT-method curve.
+test('hot immersion is front-loaded: past ~2 min more time barely changes the yield', () => {
   const base = { method: 'frenchpress', bean: 'arabica', groundsG: 18, waterMl: 250, servingMl: 200 }
   const t2 = M.brewCaffeine({ ...base, timeMin: 2 }).extractedMg
   const t10 = M.brewCaffeine({ ...base, timeMin: 10 }).extractedMg
   assert.ok(t2 / t10 > 0.95, `2 min is ${(100 * t2 / t10).toFixed(1)}% of 10 min`)
+})
+
+test('cold brew extracts SLOWLY: 1 h yields far less than 12 h (its long steep must matter)', () => {
+  const base = { method: 'coldbrew', bean: 'arabica', groundsG: 60, waterMl: 500, servingMl: 200 }
+  const h1 = M.brewCaffeine({ ...base, timeMin: 60 }).extractedMg
+  const h12 = M.brewCaffeine({ ...base, timeMin: 720 }).extractedMg
+  assert.ok(h1 / h12 < 0.6, `1 h should be well under 12 h; got ${(100 * (h1 / h12)).toFixed(0)}%`)
+})
+
+test('espresso uses the cup yield directly (no filter-style retention → no 1 ml "pot")', () => {
+  // 18 g / 36 ml double shot: filter retention (2 ml/g) would give 36 − 36 = 0 → clamped to 1 ml.
+  const r = M.brewCaffeine({ method: 'espresso', bean: 'arabica', groundsG: 18, waterMl: 36, timeMin: 0.5, servingMl: 36 })
+  assert.ok(Math.abs(r.beverageMl - 36) < 1e-9, `beverage ${r.beverageMl} ml should equal the 36 ml yield, not ~1`)
+  assert.ok(r.doseMg > 60 && r.doseMg < 200, `double-espresso dose ${r.doseMg.toFixed(0)} mg should be sane`)
+})
+
+test('brew estimate carries a ±band around the point dose (rough, not a CI)', () => {
+  const r = M.brewCaffeine({ method: 'frenchpress', bean: 'arabica', groundsG: 18, waterMl: 250, timeMin: 4, servingMl: 200 })
+  assert.ok(r.doseMgLow < r.doseMg && r.doseMg < r.doseMgHigh, 'the band brackets the point estimate')
+  assert.ok(Math.abs(r.doseMgLow - r.doseMg * (1 - M.BREW_UNCERTAINTY_FRAC)) < 1e-9)
+  assert.ok(Math.abs(r.doseMgHigh - r.doseMg * (1 + M.BREW_UNCERTAINTY_FRAC)) < 1e-9)
 })
 
 test('brew guards: zero grounds → zero dose; oversized serving is capped at the beverage', () => {

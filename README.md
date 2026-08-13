@@ -215,30 +215,40 @@ solution of first-order absorption into the bloodstream and first-order eliminat
 C(τ) = F·D·ka / (Vd·(ka − ke)) · ( e^(−ke·τ) − e^(−ka·τ) )
 ```
 
-so your level **rises gradually** over roughly the first 45 minutes after a drink (it does not jump)
-and then falls with your elimination half-life. Concentration is in mg/L of blood, using a volume of
+using a first-order absorption rate chosen to give a **typical peak around 30–60 minutes** after a
+drink, so your level rises gradually (it does not jump) and then falls with your elimination half-life. Concentration is in mg/L of blood, using a volume of
 distribution scaled by your body mass.
 
 | Parameter | Value | Notes |
 |---|---|---|
 | Bioavailability `F` | 1.0 | Caffeine is ~99–100% orally absorbed |
-| Volume of distribution | 0.6 L/kg × mass | Adult average (range 0.5–0.75) |
-| Elimination half-life | 5 h (adjustable) | Healthy-adult range ~2–8 h |
-| Absorption `ka` | 4.9 /h | Peak ~45 min after intake |
+| Volume of distribution | 0.6 L/kg × mass | Representative adult (~0.5–0.8, often 0.6–0.7) |
+| Elimination half-life | 5 h (adjustable) | Healthy-adult range ~2–8 h (pregnancy can reach 10–15 h) |
+| Absorption `ka` | 4.9 /h | Calibrated so the peak lands ~30–60 min after intake |
 
 The home-brew calculator estimates extracted caffeine as `grounds × pool × efficiency`, where the
-pool is ~13 mg/g for Arabica and ~24 mg/g for Robusta, and extraction is ~95% complete within ~2
-minutes (per method: immersion ≈0.95, drip/pour-over ≈0.85, espresso ≈0.80).
+pool is ~13 mg/g for Arabica and ~24 mg/g for Robusta and the per-method efficiency is immersion
+≈0.95, drip/pour-over ≈0.85, espresso ≈0.80. Extraction speed is **per method** — front-loaded for hot
+immersion/drip, faster for espresso, and much slower for cold brew (so its long steep actually
+matters); espresso uses the cup yield directly rather than filter-style water retention. These are
+**representative values, not laboratory measurements**, and the extraction-over-time curve is a
+deliberate modelling assumption, so the calculator shows a rough **±band** rather than a single precise
+figure. Real yields vary widely with grind, dose, agitation, temperature, pressure and contact time.
 
 Constants are population averages from published pharmacology and coffee-chemistry sources:
 
 - Caffeine PK — [StatPearls, NIH (NBK519490)](https://www.ncbi.nlm.nih.gov/books/NBK519490/);
   [Alsabri et al., *J. Caffeine Res.* 2018](https://www.liebertpub.com/doi/abs/10.1089/caff.2017.0011);
   [EFSA caffeine assessment](https://www.efsa.europa.eu/sites/default/files/event/documentset/150305-p09.pdf).
-- Brewing — [Arabica vs Robusta & by method](https://simonandbearns.coffee/en/blogs/kaffeeblog/coffee-caffeine-content-arabica-vs-robusta-and-by-brewing-method);
+- Brewing (practical references, **not** analytical studies) — [Arabica vs Robusta & by method](https://simonandbearns.coffee/en/blogs/kaffeeblog/coffee-caffeine-content-arabica-vs-robusta-and-by-brewing-method);
   [how brew methods affect caffeine](https://dabov.us/blog/how-brewing-methods-affect-caffeine-content-in-coffee).
-- Effect / toxicity bands — [Caffeine Toxicity, StatPearls (NBK532910)](https://www.ncbi.nlm.nih.gov/books/NBK532910/):
-  therapeutic ≈4–8 mg/L, toxicity from ≈15 mg/L, ≈80–100 mg/L potentially lethal.
+  The extraction constants are representative modelling values, not measured from these pages.
+- Caffeine & sleep timing — [Drake et al., *J. Clin. Sleep Med.* 2013](https://doi.org/10.5664/jcsm.3170):
+  a **400 mg** dose still measurably disrupted sleep taken 6 h before bed.
+- Toxicity bands — [Caffeine Toxicity, StatPearls (NBK532910)](https://www.ncbi.nlm.nih.gov/books/NBK532910/):
+  toxicity from ≈15 mg/L, ≈80–100 mg/L potentially lethal. The lower "effect" bands (Settled →
+  Overstimulated) are **illustrative** — subjective effects map poorly onto blood levels — not from
+  this source.
 
 The maths lives in `model.js` (with the equations and sources in its header) and is unit-tested:
 

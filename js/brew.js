@@ -45,13 +45,17 @@ function refreshPreview() {
   els.result.appendChild(strong)
   els.result.appendChild(
     document.createTextNode(
-      ' caffeine. Brew makes ~' +
+      ' caffeine (roughly ' +
+        Math.round(r.doseMgLow) +
+        '–' +
+        Math.round(r.doseMgHigh) +
+        ' mg). Brew makes ~' +
         Math.round(r.extractedMg) +
         ' mg in ~' +
         Math.round(r.beverageMl) +
         ' ml (' +
         r.concentrationMgPerMl.toFixed(2) +
-        ' mg/ml).',
+        ' mg/ml). A rough estimate — see the note below.',
     ),
   )
 }

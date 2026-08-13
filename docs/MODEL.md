@@ -114,15 +114,17 @@ d/dτ ( e^(−ke·τ) − e^(−ka·τ) ) = 0
 ⇒  τ_max = ln(ka / ke) / (ka − ke)
 ```
 
-This is `tMaxHours(...)`. With the defaults below, `τ_max ≈ 0.75 h ≈ 45 min`.
+This is `tMaxHours(...)`. With the defaults below, `τ_max ≈ 0.75 h ≈ 45 min`. In the degenerate
+`ka = ke` case the limit form `τ·e^(−ke·τ)` peaks at **`τ_max = 1/ke`** (a finite time, not undefined),
+and `tMaxHours` returns exactly that.
 
 ### 2.5 Constants
 
 | Symbol | Meaning | Value in Coffinat | Notes / source |
 |---|---|---|---|
 | `F` | Oral bioavailability | **1.0** | Caffeine is ~99–100 % absorbed, ~99 % within 45 min, negligible first‑pass. StatPearls NBK519490; Alsabri 2018. |
-| `Vd` | Volume of distribution | **0.6 L/kg × body mass** | Adult average (range 0.5–0.75 L/kg). This is why body mass is required; it sets the mg/L scale. |
-| `t½` | Elimination half‑life | **5 h** default, user‑set 2–10 h | Healthy‑adult range ≈2–8 h; the dominant driver of the fall. Shortened by smoking, lengthened in pregnancy / on some medication. |
+| `Vd` | Volume of distribution | **0.6 L/kg × body mass** | Representative adult (~0.5–0.8, often 0.6–0.7 L/kg); 0.6 sits low so it does not understate concentration. This is why body mass is required; it sets the mg/L scale. |
+| `t½` | Elimination half‑life | **5 h** default, user‑set 2–10 h | Healthy‑adult range ≈2–8 h; the dominant driver of the fall. Shortened by smoking; lengthened by liver disease and in pregnancy (third trimester can reach ~10–15 h, beyond the slider). |
 | `ke` | Elimination rate constant | `ln 2 / t½` (≈ 0.139 /h at 5 h) | Derived from `t½`. |
 | `ka` | Absorption rate constant | **4.9 /h** (abs. half‑life ≈ 8.5 min) | Chosen so `τ_max ≈ 45 min` at the default half‑life, matching the observed caffeine `t_max` of 30–60 min. It stays in‑range (≈39–50 min) across the whole 3–8 h half‑life span. |
 
@@ -214,50 +216,59 @@ Robusta mix, e.g. many supermarket espresso blends.)
 
 ### 4.2 Extraction efficiency
 
-Caffeine is very water‑soluble and comes out fast and nearly completely — roughly **95 % of the
-achievable yield within ~2 minutes**, regardless of method. Coffinat models the fraction extracted as
-a saturating exponential in contact time `t` (minutes):
+Coffinat models the fraction extracted as a saturating exponential in contact time `t` (minutes). The
+**rate `k` is per method** — this is a modelling choice, not a measured constant, but it matters: a
+single universal rate would make a 12‑hour cold steep indistinguishable from a 2‑minute one.
 
 ```
-efficiency(method, t) = E_max(method) · ( 1 − e^(−k · t) ),   k = 1.5 /min
+efficiency(method, t) = E_max(method) · ( 1 − e^(−k(method) · t) )
 ```
 
-`k = 1.5 /min` gives ≈95 % of `E_max` by 2 min. `E_max` is the method's practical ceiling:
-
 ```
-E_max:  French press ≈ 0.95   Pour‑over ≈ 0.85   Drip ≈ 0.85
-        Espresso ≈ 0.80       Moka ≈ 0.85        Cold brew ≈ 0.85
+k (/min):  French press 1.5   Pour‑over 1.5   Drip 1.5
+           Espresso 5.0       Moka 2.0        Cold brew 0.006
+E_max:     French press 0.95  Pour‑over 0.85  Drip 0.85
+           Espresso 0.80      Moka 0.85       Cold brew 0.85
 ```
 
-Immersion (French press) sits highest; espresso is a very short, high‑pressure contact so its ceiling
-is a little lower. Cold brew reaches a similar ceiling but only because its contact time is measured
-in hours.
+Hot immersion/drip are front‑loaded (`k = 1.5` → ≈95 % of `E_max` by ~2 min); espresso is faster still
+under pressure; **cold brew is far slower**, so its long steep genuinely changes the yield. `E_max` is
+the method's practical ceiling — immersion (French press) sits highest; espresso is a very short,
+high‑pressure contact so its ceiling is a little lower. All of these are **representative values, not
+laboratory measurements** (see §4.4).
 
 ### 4.3 From grounds to a dose
 
 ```
 extracted(mg)   = grounds(g) · pool(mg/g) · efficiency
-beverage(mL)    = water(mL) − retention · grounds(g)      retention = 2 mL/g absorbed by spent grounds
-concentration   = extracted / beverage                    [mg/mL]
+beverage(mL)    = water(mL) − retention(method) · grounds(g)   retention = 2 mL/g for filter/immersion,
+                                                               0 for espresso (enter the cup yield)
+concentration   = extracted / beverage                        [mg/mL]
 dose(mg)        = concentration · min(serving, beverage)
 ```
 
 `min(serving, beverage)` enforces a physical limit: you cannot drink more liquid than the brew
-produced. `beverage` is floored at 1 mL to avoid division by zero for nonsensical inputs. This is
-`brewCaffeine(...)`.
+produced. `beverage` is floored at 1 mL to avoid division by zero for nonsensical inputs. **Espresso
+uses `retention = 0`**: you enter the cup yield (e.g. 36 mL for a double), not the boiler water — the
+filter‑retention rule would otherwise drive an 18 g / 36 mL shot to a nonsensical ~1 mL. Because the
+whole estimate is heuristic, `brewCaffeine(...)` also returns `doseMgLow`/`doseMgHigh`, a rough
+**±35 %** band (`BREW_UNCERTAINTY_FRAC`) that the UI shows instead of a single false‑precise figure.
 
 ### 4.4 Constants and sources
 
 | Quantity | Value | Source |
 |---|---|---|
-| Arabica pool | 13 mg/g (1.2–1.5 % by wt) | Simon & Bearns; general roaster data |
+| Arabica pool | 13 mg/g (1.2–1.5 % by wt) | Simon & Bearns; general roaster data (practical, not analytical) |
 | Robusta pool | 24 mg/g (2.2–2.7 % by wt) | as above |
-| Extraction ceiling `E_max` | 0.80–0.95 by method | Dabov (method vs caffeine); Equipoise (French press) |
-| Extraction rate `k` | 1.5 /min (~95 % by 2 min) | derived from "≈95 % within 2 min" |
-| Grounds retention | 2 mL/g | standard brewing rule of thumb |
+| Extraction ceiling `E_max` | 0.80–0.95 by method | representative; Dabov (method vs caffeine); Equipoise (French press) |
+| Extraction rate `k` | 0.006–5 /min, per method | modelling assumption (fast hot, slow cold), **not** measured |
+| Grounds retention | 2 mL/g (0 for espresso) | standard filter rule of thumb; espresso uses cup yield |
+| Estimate band | ±35 % | heuristic, to signal the real spread |
 
-Water is assumed near‑optimal (~93–96 °C); temperature is not a separate input, to avoid false
-precision.
+These are **representative modelling values, not laboratory measurements** — and the two coffee sources
+are practical brewing references, not analytical studies. Hot brewing assumes near‑optimal water
+(~93–96 °C); temperature is not a separate input, to avoid false precision, and cold brew is handled by
+its much slower `k` instead.
 
 ### 4.5 Worked example
 
@@ -280,9 +291,12 @@ sanity‑check and overwrite it. (The unit test pins this example to 180–225 m
 
 ### 5.1 The ladder
 
-The concentration is mapped to a labelled band ("traffic light"). Thresholds are anchored to the
-clinical literature: a typical **therapeutic** range of ~4–8 mg/L, **toxicity** (CNS/cardiac
-stimulation, arrhythmia, seizures) from ~15 mg/L, and ~80–100 mg/L potentially lethal.
+The concentration is mapped to a labelled band ("traffic light"). Only the **high end is anchored to
+the toxicology literature**: **toxicity** (CNS/cardiac stimulation, arrhythmia, seizures) from
+~15 mg/L, and ~80–100 mg/L potentially lethal. The lower bands (Settled → Overstimulated) are
+**illustrative subjective‑effect bands**, not clinical concentration thresholds — subjective effects
+map poorly onto blood levels. (Earlier drafts cited a "therapeutic ~4–8 mg/L" range; that terminology
+belongs to caffeine‑citrate dosing in neonates, a different context, and has been removed.)
 
 | Band (upper bound, mg/L) | Label | Typical correlate |
 |---|---|---|
@@ -299,11 +313,16 @@ tolerance‑dependent** — a habitual drinker feels far less at the same concen
 ### 5.2 Tolerance scaling
 
 Tolerance is subjective — it changes how strongly a concentration is *felt*, not the blood level
-itself. So it does **not** touch the pharmacokinetics; it only scales the ladder's thresholds:
+itself. So it does **not** touch the pharmacokinetics; it only softens the *sub‑toxic* ladder bands:
 
 ```
-band = effectLevel( concentration / factor )
+band = effectLevel( concentration / factor )     only while concentration < TOXIC_THRESHOLD_MGL (15)
+band = effectLevel( concentration )              at or above 15 mg/L — tolerance is IGNORED
 ```
+
+The factors are **heuristic, not measured** — real tolerance is effect‑specific (you may habituate to
+the cardiovascular response yet still lose sleep) and time‑dependent, so treat them as a coarse
+"feels‑like" dial:
 
 | Tolerance | factor |
 |---|---|
@@ -312,8 +331,14 @@ band = effectLevel( concentration / factor )
 | Moderate (a few a day) | 1.7 |
 | Strong (heavy daily habit) | 2.3 |
 
+**Safety guard:** tolerance must never soften a toxicity classification — a potentially lethal blood
+level is lethal regardless of habit. So at or above `TOXIC_THRESHOLD_MGL` (15 mg/L) the raw
+concentration governs and the factor is ignored. Without this, a strong‑tolerance user at 80 mg/L (a
+potentially lethal level) would be scaled to `80 / 2.3 ≈ 35 mg/L` and mislabelled two bands too low.
+
 Example: 8 mg/L reads as *Overstimulated* at no tolerance, but `8 / 2.3 ≈ 3.5 mg/L` → *Alert* for a
-strong‑tolerance user. Unit tests cover the boundary mapping and the tolerance shift.
+strong‑tolerance user — whereas 20 mg/L stays *Excessive* for everyone. Unit tests cover the boundary
+mapping, the tolerance shift, and the toxicity guard.
 
 ### 5.3 Intake guidelines (separate from the ladder)
 
