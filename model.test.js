@@ -1,9 +1,12 @@
 'use strict'
 
 // Unit tests for the pure core logic. Run: `node --test`
-// These are written to FAIL if the pharmacology or the extraction math is wrong — each asserts an
-// observable property (peak location, half-life decay, additivity, degenerate-case finiteness,
-// scale), not merely "it returned a number".
+// These verify the mathematical IMPLEMENTATION and lock in the documented modelling assumptions
+// (peak location, half-life decay, additivity, degenerate-case finiteness, scale, the uncertainty
+// envelope, the toxicity guard). They assert observable properties, not merely "it returned a
+// number" — but they do NOT independently validate those assumptions experimentally: the PK
+// constants, tolerance factors and brew parameters are averages/heuristics documented in model.js,
+// not measurements taken here.
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -13,6 +16,14 @@ import * as M from './model.js'
 const PROFILE = { massKg: 70, halfLifeH: 5 } // 70 kg adult, 5 h half-life
 const VD = M.volumeOfDistributionL(70) // 42 L
 const KE = M.keFromHalfLife(5) // ln2/5
+
+// A coarse day timeline (5-min steps, midnight→midnight) for the envelope tests.
+const XS_DAY = (function () {
+  const xs = []
+  for (let m = 0; m <= 1440; m += 5) xs.push(m)
+  return xs
+})()
+const idxAt = (hours) => XS_DAY.indexOf(hours * 60)
 
 // ────────────────────────────────────────────────────────────── pharmacokinetics
 
@@ -153,6 +164,78 @@ test('effectLevel is total (never returns undefined) and monotonic in severity',
     assert.ok(idx >= last, 'severity must not decrease as concentration rises')
     last = idx
   }
+})
+
+// ────────────────────────────────────────────────────────────── plausible-range envelope
+
+test('envelope brackets the centre estimate and stays finite & non-negative', () => {
+  const doses = [
+    { mg: 100, absMin: 8 * 60, frac: 0.2 },
+    { mg: 80, absMin: 13 * 60, frac: 0.35 },
+  ]
+  const b = M.concentrationBandSeriesMgL(doses, PROFILE, XS_DAY)
+  assert.equal(b.low.length, XS_DAY.length)
+  for (let i = 0; i < XS_DAY.length; i++) {
+    assert.ok(Number.isFinite(b.low[i]) && Number.isFinite(b.center[i]) && Number.isFinite(b.high[i]))
+    assert.ok(b.low[i] >= 0, `low never negative (got ${b.low[i]})`)
+    assert.ok(b.low[i] <= b.center[i] + 1e-9, `low ${b.low[i]} ≤ center ${b.center[i]}`)
+    assert.ok(b.center[i] <= b.high[i] + 1e-9, `center ${b.center[i]} ≤ high ${b.high[i]}`)
+  }
+})
+
+test('envelope centre equals the plain concentration series (best estimate is unchanged)', () => {
+  const doses = [{ mg: 100, absMin: 8 * 60, frac: 0.2 }]
+  const b = M.concentrationBandSeriesMgL(doses, PROFILE, XS_DAY)
+  const plain = M.concentrationSeriesMgL(doses, PROFILE, XS_DAY)
+  for (let i = 0; i < XS_DAY.length; i++) assert.ok(Math.abs(b.center[i] - plain[i]) < 1e-9)
+})
+
+test('no dose / no body mass → a flat zero envelope (no phantom uncertainty)', () => {
+  const empty = M.concentrationBandSeriesMgL([], PROFILE, XS_DAY)
+  assert.ok(empty.low.every((v) => v === 0) && empty.center.every((v) => v === 0) && empty.high.every((v) => v === 0))
+  const noMass = M.concentrationBandSeriesMgL([{ mg: 100, absMin: 0, frac: 0.2 }], { massKg: 0, halfLifeH: 5 }, XS_DAY)
+  assert.ok(noMass.high.every((v) => v === 0))
+})
+
+test('half-life uncertainty widens the band LATER in the day, relative to the peak', () => {
+  const doses = [{ mg: 200, absMin: 0, frac: 0 }] // frac 0 → physiology-only band
+  const b = M.concentrationBandSeriesMgL(doses, PROFILE, XS_DAY)
+  const peakI = idxAt(0.75) // ~45 min
+  const lateI = idxAt(14)
+  const relWidth = (i) => (b.high[i] - b.low[i]) / b.center[i]
+  assert.ok(b.center[peakI] > 0 && b.center[lateI] > 0)
+  assert.ok(relWidth(lateI) > relWidth(peakI), `late width ${relWidth(lateI).toFixed(2)} should exceed peak ${relWidth(peakI).toFixed(2)}`)
+})
+
+test('a home-brew dose (large content uncertainty) gives a WIDER band than a typed-in dose', () => {
+  const i = idxAt(9) // ~1 h after an 08:00 intake
+  const brew = M.concentrationBandSeriesMgL([{ mg: 100, absMin: 8 * 60, frac: M.doseUncertaintyFrac('brew') }], PROFILE, XS_DAY)
+  const typed = M.concentrationBandSeriesMgL([{ mg: 100, absMin: 8 * 60, frac: M.doseUncertaintyFrac('manual') }], PROFILE, XS_DAY)
+  assert.ok(brew.high[i] - brew.low[i] > typed.high[i] - typed.low[i], 'home-brew band should be wider')
+})
+
+test('legacy dose without a frac still works — band contains the centre, width from physiology alone', () => {
+  const legacy = [{ mg: 100, absMin: 8 * 60 }] // old saved data: no frac field
+  const b = M.concentrationBandSeriesMgL(legacy, PROFILE, XS_DAY)
+  const i = idxAt(9)
+  assert.ok(b.low[i] <= b.center[i] && b.center[i] <= b.high[i])
+  assert.ok(b.high[i] > b.low[i], 'physiology uncertainty still gives a nonzero band')
+  assert.ok(b.low.every(Number.isFinite) && b.high.every(Number.isFinite))
+})
+
+test('doseUncertaintyFrac orders brew > preset > manual, with a preset default', () => {
+  assert.ok(M.doseUncertaintyFrac('brew') > M.doseUncertaintyFrac('preset'))
+  assert.ok(M.doseUncertaintyFrac('preset') > M.doseUncertaintyFrac('manual'))
+  assert.equal(M.doseUncertaintyFrac('nonsense'), M.doseUncertaintyFrac('preset'))
+})
+
+// ────────────────────────────────────────────────────────────── model-validity boundary
+
+test('pkForecastReliable turns off in the toxic range (>= 15 mg/L)', () => {
+  assert.equal(M.pkForecastReliable(5), true)
+  assert.equal(M.pkForecastReliable(14.9), true)
+  assert.equal(M.pkForecastReliable(M.TOXIC_THRESHOLD_MGL), false)
+  assert.equal(M.pkForecastReliable(80), false)
 })
 
 // ────────────────────────────────────────────────────────────── home-brew extraction

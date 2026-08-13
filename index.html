@@ -69,15 +69,23 @@
         <div class="card__head">
           <h2>Blood caffeine through the day</h2>
           <ul class="legend">
-            <li class="legend__item"><span class="legend__swatch legend__swatch--actual"></span>Actual</li>
-            <li class="legend__item"><span class="legend__swatch legend__swatch--forecast"></span>Forecast</li>
+            <li class="legend__item"><span class="legend__swatch legend__swatch--actual"></span>Estimate</li>
+            <li class="legend__item"><span class="legend__swatch legend__swatch--band"></span>Plausible range</li>
+            <li class="legend__item"><span class="legend__swatch legend__swatch--forecast"></span>Forecast (planned drink)</li>
             <li class="legend__item"><span class="legend__swatch legend__swatch--threshold"></span>Sleep limit</li>
           </ul>
         </div>
         <div class="chart-scroll">
-          <div id="chart" class="chart" role="img" aria-label="Estimated blood caffeine concentration over 24 hours"></div>
+          <div id="chart" class="chart" role="img" aria-label="Estimated blood caffeine concentration over 24 hours, with a shaded plausible range"></div>
         </div>
+        <p class="chart__warning" id="model-warning" role="alert" hidden></p>
         <p class="chart__flag" id="sleep-flag" hidden></p>
+        <p class="field__hint">
+          The shaded band is a <strong>plausible range</strong>, not a 95% confidence interval: it
+          reflects normal person-to-person variation in caffeine pharmacokinetics and in how much
+          caffeine each drink holds. It widens later in the day as small differences in your half-life
+          add up. The solid line is the best single estimate.
+        </p>
       </section>
 
       <!-- You -->
@@ -176,6 +184,18 @@
           averages; your own metabolism may differ substantially.
         </p>
 
+        <h3>The plausible range (shaded band)</h3>
+        <p>
+          The solid line is a single best estimate; nobody is exactly average, so the shaded band shows
+          how uncertain it is. It is built by re-running the model across a small set of plausible
+          values for the things we cannot know exactly — your volume of distribution, your elimination
+          half-life, how fast you absorb caffeine, and how much caffeine each drink really held — and
+          shading between the lowest and highest resulting curves. It is a <strong>plausible range</strong>,
+          not a statistically calibrated confidence interval. It widens later in the day, because small
+          differences in half-life compound as caffeine is cleared, and a home-brewed coffee widens it
+          more than a known, measured caffeine amount does.
+        </p>
+
         <h3>Your privacy</h3>
         <p>
           Everything runs in your browser. Your body mass, drinks, times, sleep goal and any custom
@@ -194,6 +214,13 @@
           are rough estimates that ignore grind, agitation and water chemistry. The model shows an
           <em>estimate</em>; it does not tell you an amount that is safe to drink.
           <strong>Not medical advice</strong> — do not use it for medical or dosing decisions.
+        </p>
+        <p>
+          <strong>At very high exposures the model breaks down.</strong> Above the toxic range
+          (≈15 mg/L) caffeine elimination can become nonlinear and substantially slower than this
+          constant-half-life model assumes, so toxic-range estimates should <em>not</em> be used to
+          predict clearance or recovery time — the app marks them unreliable and shows a warning rather
+          than a false-precise "back below X by HH:MM". A real caffeine overdose is a medical emergency.
         </p>
 
         <h3>Sources</h3>
@@ -229,6 +256,15 @@
             <a href="https://dabov.us/blog/how-brewing-methods-affect-caffeine-content-in-coffee" target="_blank" rel="noopener noreferrer">how brew methods affect caffeine</a>.
             The per-gram pools and method efficiencies are representative values, and the extraction-over-time
             curve is a modelling assumption — not measurements from these pages.
+          </li>
+          <li>
+            <strong>What's evidence-based vs. chosen.</strong> Well-supported: the volume of
+            distribution, average half-life, near-complete absorption, the EFSA intake figures and the
+            high-concentration toxicity thresholds. Deliberately simplified: the one-compartment model
+            and its single absorption rate. Heuristic (documented estimates, not measured constants):
+            the subjective tolerance factors and every home-brew parameter. The shaded uncertainty band
+            is a <strong>non-probabilistic scenario range</strong> over plausible physiology and drink
+            content — a spread, not a probability.
           </li>
         </ul>
 

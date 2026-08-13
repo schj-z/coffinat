@@ -1,5 +1,6 @@
 /* Coffinat — small shared helpers (impure side: DOM, clock, formatting). */
 import * as M from '../model.js'
+import { HOMEBREW, CUSTOM } from './presets.js'
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -47,9 +48,21 @@ export function formatLong(key) {
 }
 
 /**
- * Turn log/plan-shaped entries into model doses {mg, absMin}; drop hidden and invalid ones.
- * `offsetMin` shifts the whole day onto another day's midnight-anchored timeline (negative for a
- * prior day), which is how earlier-day caffeine carries over.
+ * Which caffeine-content uncertainty applies to a log/plan entry, DERIVED from its existing fields
+ * (no stored schema change → old localStorage data just works): a home brew is least certain, a
+ * hand-entered "Custom (mg)" figure most certain, an average preset in between.
+ */
+export function doseFrac(e) {
+  if (e.brew || e.presetId === HOMEBREW) return M.doseUncertaintyFrac('brew')
+  if (e.presetId === CUSTOM) return M.doseUncertaintyFrac('manual')
+  return M.doseUncertaintyFrac('preset')
+}
+
+/**
+ * Turn log/plan-shaped entries into model doses {mg, absMin, frac}; drop hidden and invalid ones.
+ * `frac` is the dose's content uncertainty, used only by the plausible-range envelope. `offsetMin`
+ * shifts the whole day onto another day's midnight-anchored timeline (negative for a prior day),
+ * which is how earlier-day caffeine carries over.
  */
 export function toDoses(entries, offsetMin = 0) {
   const doses = []
@@ -58,7 +71,7 @@ export function toDoses(entries, offsetMin = 0) {
     const min = M.parseClockToMinutes(e.time)
     const mg = num(e.mg)
     if (min == null || !(mg > 0)) continue
-    doses.push({ mg: mg, absMin: min + offsetMin })
+    doses.push({ mg: mg, absMin: min + offsetMin, frac: doseFrac(e) })
   }
   return doses
 }

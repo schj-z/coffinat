@@ -390,6 +390,16 @@ a {
   border-top-color: var(--accent);
 }
 
+/* The band swatch is a filled block (not a rule) with a faint outline, echoing the shaded envelope
+   and staying legible without relying on colour alone. */
+.legend__swatch--band {
+  height: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  transform: translateY(0.2rem);
+}
+
 .legend__swatch--forecast {
   border-top-style: dashed;
   border-top-color: var(--forecast);
@@ -418,6 +428,23 @@ a {
 }
 
 .chart__flag[hidden] {
+  display: none;
+}
+
+/* Model-validity warning shown when estimated levels enter the toxic range and the PK forecast can no
+   longer be trusted. Uses the danger palette and a left rule so it reads as a boundary alert. */
+.chart__warning {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.85rem;
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.chart__warning[hidden] {
   display: none;
 }
 

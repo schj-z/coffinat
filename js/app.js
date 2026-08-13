@@ -63,11 +63,13 @@ function render() {
 
   const planValid = state.plan.enabled && M.parseClockToMinutes(state.plan.time) != null && util.num(state.plan.mg) > 0
   const plannedDose = planValid
-    ? { mg: util.num(state.plan.mg), absMin: M.parseClockToMinutes(state.plan.time) }
+    ? { mg: util.num(state.plan.mg), absMin: M.parseClockToMinutes(state.plan.time), frac: util.doseFrac(state.plan) }
     : null
   const effectiveDoses = plannedDose ? actualDoses.concat([plannedDose]) : actualDoses
 
-  const actualSeries = M.concentrationSeriesMgL(actualDoses, state.profile, chart.XS)
+  // The plausible-range envelope wraps the ACTUAL (logged) curve; its centre IS the best estimate.
+  const actualBand = M.concentrationBandSeriesMgL(actualDoses, state.profile, chart.XS)
+  const actualSeries = actualBand.center
   const forecastSeries = plannedDose ? M.concentrationSeriesMgL(effectiveDoses, state.profile, chart.XS) : null
 
   // Peaks: the most you reach from what's actually logged, and — with the forecast on — the most
@@ -96,15 +98,38 @@ function render() {
     ? 'Above the ' + M.DAILY_LIMIT_MG + ' mg/day guideline.'
     : 'Guideline: up to ' + M.DAILY_LIMIT_MG + ' mg/day, ' + M.SINGLE_DOSE_CAUTION_MG + ' mg per dose.'
 
+  // Model-validity: above the toxic threshold the constant-half-life PK model is unreliable (real
+  // clearance can slow markedly), so we warn and stop presenting precise recovery/bedtime numbers.
+  const peakForValidity = Math.max(actualPeak.val, predictedPeak ? predictedPeak.val : 0)
+  const pkReliable = M.pkForecastReliable(peakForValidity)
+  if (!pkReliable) {
+    els.modelWarning.hidden = false
+    els.modelWarning.textContent =
+      '⚠ Estimated levels reach the toxic range (≥ ' + M.TOXIC_THRESHOLD_MGL + ' mg/L). Above this, ' +
+      'caffeine can be cleared far more slowly than this model assumes, so the curve here — and any ' +
+      'time it shows you dropping back below a level — is unreliable and likely optimistic. Treat it ' +
+      'as a warning, not a prediction; a real overdose needs medical advice.'
+  } else {
+    els.modelWarning.hidden = true
+    els.modelWarning.textContent = ''
+  }
+
   const bedMin = M.parseClockToMinutes(state.sleep.time)
   const bedAbs = bedMin != null ? bedMin : null
   const bedVal = bedAbs != null ? M.concentrationAtMgL(effectiveDoses, bedAbs, state.profile) : 0
   els.bedLabel.textContent = 'At bedtime (' + (state.sleep.time || '—') + ')'
   const bedOver = bedVal > state.sleep.thresholdMgL
-  setValue(els.bed, bedVal.toFixed(2), 'mg/L', bedAbs == null ? null : bedOver ? 'summary__value--over' : 'summary__value--ok')
+  setValue(els.bed, bedVal.toFixed(2), 'mg/L', bedAbs == null || !pkReliable ? null : bedOver ? 'summary__value--over' : 'summary__value--ok')
 
   if (bedAbs == null) {
     els.flag.hidden = true
+  } else if (!pkReliable) {
+    // The bedtime figure rides on the (unreliable) decay from a toxic peak — don't assert it.
+    els.flag.hidden = false
+    els.flag.dataset.state = 'over'
+    els.flag.textContent =
+      '⚠ Levels reach the toxic range today, so the bedtime estimate and how fast caffeine clears ' +
+      'can’t be predicted reliably here — see the warning above.'
   } else {
     els.flag.hidden = false
     els.flag.dataset.state = bedOver ? 'over' : 'ok'
@@ -115,6 +140,8 @@ function render() {
 
   chart.update({
     actual: actualSeries,
+    actualLow: actualBand.low,
+    actualHigh: actualBand.high,
     forecast: forecastSeries,
     threshold: util.num(state.sleep.thresholdMgL),
     bedAbs: bedAbs,
@@ -151,6 +178,7 @@ function init() {
   els.bed = document.getElementById('bed-value')
   els.bedLabel = document.getElementById('bed-label')
   els.flag = document.getElementById('sleep-flag')
+  els.modelWarning = document.getElementById('model-warning')
 
   chart.init(document.getElementById('chart'), api)
   controls.init(api)

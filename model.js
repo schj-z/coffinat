@@ -48,6 +48,14 @@
  * Sources (practical brewing references, not analytical studies): Simon & Bearns roasters (Arabica
  * vs Robusta & by method); Dabov (brew method vs caffeine); Equipoise (French-press caffeine).
  *
+ * ── Uncertainty & validity ─────────────────────────────────────────────────────────────────
+ * concentrationBandSeriesMgL returns a plausible-range ENVELOPE {center, low, high} — a deterministic
+ * scenario band (NOT a probability/CI) from plausible spreads in Vd, half-life, absorption and dose
+ * content (PK_UNCERTAINTY, DOSE_UNCERTAINTY). The half-life spread makes it widen over the day.
+ * pkForecastReliable(mgL) is false in the toxic range (≥ TOXIC_THRESHOLD_MGL): there the linear
+ * constant-half-life model breaks down (saturable kinetics, lengthening half-life), so the UI warns
+ * and withholds recovery-time claims rather than showing false precision. No overdose model is attempted.
+ *
  * This is an ES module: imported by the browser (js/*.js via <script type="module">) and by the
  * Node test runner (model.test.js).
  */
@@ -131,6 +139,89 @@ export function concentrationSeriesMgL(doses, profile, xsMin) {
   })
 }
 
+// ──────────────────────────────────────────────────────────── plausible-range envelope
+
+// Inter-individual PK spread used to draw the plausible-range ENVELOPE. This is a deterministic
+// SCENARIO band, NOT a probability distribution or a confidence interval. Vd and ka use the low/high
+// ends of the population ranges in the literature; the half-life band is a deliberately CONSERVATIVE
+// ±30 % around whatever half-life the user selected. Because elimination compounds over time, the
+// half-life spread is what makes the band widen through the day — the honest signal that a forecast
+// 8 h out is far less certain than one 1 h out.
+export const PK_UNCERTAINTY = {
+  vdLoPerKg: 0.5, // L/kg — raises concentration (population ~0.5–0.8, centre 0.6)
+  vdHiPerKg: 0.7, // L/kg — lowers concentration
+  halfLifeFracLo: 0.7, // × selected t½ → faster elimination (lower tail)
+  halfLifeFracHi: 1.3, // × selected t½ → slower elimination (higher tail)
+  kaLoPerH: 3.4, // absorption spread around 4.9/h (~±30 %): later, lower peak
+  kaHiPerH: 6.4, // earlier, higher peak
+}
+
+// Dose selectors — a dose may carry `frac`, its caffeine-CONTENT uncertainty (0 = exactly known).
+function mgCenter(d) {
+  return d.mg > 0 ? d.mg : 0
+}
+function mgHigh(d) {
+  return mgCenter(d) * (1 + (d.frac > 0 ? d.frac : 0))
+}
+function mgLow(d) {
+  return mgCenter(d) * (1 - (d.frac > 0 ? d.frac : 0))
+}
+
+function scenarioSeries(doses, xsMin, vdL, keH, kaPerH, mgOf) {
+  return xsMin.map((xMin) => {
+    let total = 0
+    for (const d of doses) {
+      const tauH = (xMin - d.absMin) / 60
+      if (tauH > 0) total += doseConcentrationMgL(mgOf(d), tauH, vdL, keH, kaPerH)
+    }
+    return total
+  })
+}
+
+/**
+ * Plausible-range envelope for the concentration curve: { center, low, high } arrays over xsMin.
+ *
+ * `center` is the best estimate (identical to concentrationSeriesMgL). `high`/`low` are the pointwise
+ * max/min over a small set of parameter scenarios that vary volume of distribution, elimination
+ * half-life and absorption timing (PK_UNCERTAINTY), combined with each dose's own content uncertainty
+ * (`dose.frac`). Taking the max/min AT EACH TIME POINT — rather than one fixed "high person" and one
+ * "low person" — lets the band widen over the day as plausible half-lives diverge, and near the peak
+ * as absorption timing varies. By construction the band always contains `center` (the centre scenario
+ * is included in both sets, and content-high ≥ centre ≥ content-low). Deterministic; no simulation.
+ */
+export function concentrationBandSeriesMgL(doses, profile, xsMin) {
+  const massKg = profile.massKg
+  const H = profile.halfLifeH
+  const vd0 = volumeOfDistributionL(massKg)
+  const ke0 = keFromHalfLife(H)
+  const zeros = () => xsMin.map(() => 0)
+  const center = scenarioSeries(doses, xsMin, vd0, ke0, PK.KA_PER_H, mgCenter)
+  if (!(vd0 > 0) || !(ke0 > 0)) return { center: zeros(), low: zeros(), high: zeros() }
+
+  const u = PK_UNCERTAINTY
+  const vdLo = u.vdLoPerKg * massKg
+  const vdHi = u.vdHiPerKg * massKg
+  const keSlow = keFromHalfLife(H * u.halfLifeFracHi) // long t½ → small ke → high tail
+  const keFast = keFromHalfLife(H * u.halfLifeFracLo) // short t½ → large ke → low tail
+
+  // Upper edge: high scale (low Vd) + fast absorption, with both fast- and slow-elimination scenarios
+  // so the max bounds the peak AND the tail; plus the centre scenario at content-high so the band is
+  // guaranteed to enclose the centre. Lower edge mirrors it.
+  const highSeries = [
+    scenarioSeries(doses, xsMin, vdLo, keSlow, u.kaHiPerH, mgHigh),
+    scenarioSeries(doses, xsMin, vdLo, keFast, u.kaHiPerH, mgHigh),
+    scenarioSeries(doses, xsMin, vd0, ke0, PK.KA_PER_H, mgHigh),
+  ]
+  const lowSeries = [
+    scenarioSeries(doses, xsMin, vdHi, keFast, u.kaLoPerH, mgLow),
+    scenarioSeries(doses, xsMin, vdHi, keSlow, u.kaLoPerH, mgLow),
+    scenarioSeries(doses, xsMin, vd0, ke0, PK.KA_PER_H, mgLow),
+  ]
+  const high = xsMin.map((_, i) => Math.max(highSeries[0][i], highSeries[1][i], highSeries[2][i]))
+  const low = xsMin.map((_, i) => Math.min(lowSeries[0][i], lowSeries[1][i], lowSeries[2][i]))
+  return { center, low, high }
+}
+
 // ──────────────────────────────────────────────────────────── effect levels (traffic light)
 
 // Approximate associations between total plasma caffeine concentration and effects — a "DEFCON"
@@ -189,6 +280,17 @@ export function effectLevel(mgL, factor) {
   return EFFECT_LEVELS[EFFECT_LEVELS.length - 1]
 }
 
+/**
+ * Whether the ordinary linear, constant-half-life PK forecast can be trusted at concentration `mgL`.
+ * Above the toxic threshold caffeine kinetics can become saturable/nonlinear and the half-life can
+ * lengthen substantially, so this model may UNDER-estimate how long levels stay high. Returns false
+ * there — the UI then warns about the model boundary and suppresses precise recovery-time claims,
+ * rather than showing false precision. (Coffinat deliberately does NOT try to model overdose kinetics.)
+ */
+export function pkForecastReliable(mgL) {
+  return !(mgL >= TOXIC_THRESHOLD_MGL)
+}
+
 // ──────────────────────────────────────────────────────────── home-brew extraction
 
 export const BEAN_POOL_MG_PER_G = { arabica: 13, robusta: 24, blend: 16 }
@@ -213,6 +315,22 @@ export const GROUNDS_RETENTION_ML_PER_G = 2 // default water soaked up by spent 
 // Brew estimates carry large real-world uncertainty (grind, dose, agitation, temperature, pressure,
 // contact time), so the app shows a rough ±band rather than a falsely precise single figure. Heuristic.
 export const BREW_UNCERTAINTY_FRAC = 0.35
+
+// How well we know a dose's caffeine content depends on where the number came from — a heuristic ±
+// fraction (NOT a probability), fed into the plausible-range envelope as `dose.frac`. A hand-typed mg
+// is fairly firm; an "average product" preset varies by brand/size; a home brew is least certain (it
+// reuses the brew band above). Presets share one figure — a rough average, not a claim that every
+// product varies equally.
+export const DOSE_UNCERTAINTY = {
+  manual: 0.1, // user typed a specific mg
+  preset: 0.2, // average commercial product
+  brew: BREW_UNCERTAINTY_FRAC, // home-brew estimate
+}
+
+/** Content-uncertainty fraction for a dose source ('manual' | 'preset' | 'brew'); default = preset. */
+export function doseUncertaintyFrac(source) {
+  return DOSE_UNCERTAINTY[source] != null ? DOSE_UNCERTAINTY[source] : DOSE_UNCERTAINTY.preset
+}
 
 /**
  * Caffeine produced by a home brew and the dose in one serving.

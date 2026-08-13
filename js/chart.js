@@ -61,16 +61,50 @@ function build(ctx) {
 
   const series = [
     {
-      name: 'Actual',
+      name: 'Estimate',
       type: 'line',
+      z: 4,
       showSymbol: false,
       smooth: 0.3,
       lineStyle: { color: accent, width: 2.5, cap: 'round' },
-      areaStyle: { color: accent, opacity: 0.08 },
+      areaStyle: { color: accent, opacity: 0.06 },
       data: ctx.actual.map((y, i) => [XS[i], round2(y)]),
       markLine: { symbol: 'none', animation: false, data: markLines(ctx), emphasis: { disabled: true } },
     },
   ]
+
+  // Plausible-range envelope: two stacked lines (invisible low baseline + high−low fill) draw a
+  // translucent band between low and high, kept visually subordinate to the solid centre line. Faint
+  // edge strokes give a non-colour cue so the band reads without relying on the fill colour alone.
+  if (ctx.actualLow && ctx.actualHigh) {
+    series.unshift(
+      {
+        name: '__band_low',
+        type: 'line',
+        stack: 'band',
+        z: 1,
+        silent: true,
+        showSymbol: false,
+        smooth: 0.3,
+        lineStyle: { color: accent, width: 1, opacity: 0.35 },
+        areaStyle: { opacity: 0 },
+        data: ctx.actualLow.map((y, i) => [XS[i], round2(y)]),
+      },
+      {
+        name: '__band_fill',
+        type: 'line',
+        stack: 'band',
+        z: 1,
+        silent: true,
+        showSymbol: false,
+        smooth: 0.3,
+        lineStyle: { color: accent, width: 1, opacity: 0.35 },
+        areaStyle: { color: accent, opacity: 0.14 },
+        data: ctx.actualHigh.map((y, i) => [XS[i], round2(Math.max(0, y - ctx.actualLow[i]))]),
+      },
+    )
+  }
+
   if (ctx.forecast) {
     series.push({
       name: 'Forecast',
@@ -93,8 +127,20 @@ function build(ctx) {
       textStyle: { color: text },
       formatter: function (params) {
         if (!params || !params.length) return ''
+        const i = params[0].dataIndex
         let s = '<strong>' + M.minutesToClock(params[0].value[0]) + '</strong>'
-        for (const p of params) s += '<br>' + p.marker + p.seriesName + ': ' + p.value[1].toFixed(2) + ' mg/L'
+        for (const p of params) {
+          if (p.seriesName && p.seriesName.indexOf('__') === 0) continue // skip the band helper series
+          s += '<br>' + p.marker + p.seriesName + ': ' + p.value[1].toFixed(2) + ' mg/L'
+        }
+        if (ctx.actualLow && ctx.actualHigh && i != null && ctx.actualLow[i] != null) {
+          s +=
+            '<br><span style="opacity:.7">Plausible range: ' +
+            ctx.actualLow[i].toFixed(2) +
+            '–' +
+            ctx.actualHigh[i].toFixed(2) +
+            ' mg/L</span>'
+        }
         return s
       },
     },

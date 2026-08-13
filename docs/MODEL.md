@@ -349,7 +349,65 @@ single doses up to **200 mg** raise no concern. These are `DAILY_LIMIT_MG` and
 
 ---
 
-## 6. How the pieces interact
+## 6. Uncertainty envelope and model validity
+
+### 6.1 Why a band
+
+A single line looks more precise than a population-average model can justify. So the chart shades a
+**plausible range** around the estimate. It is a **deterministic scenario band, not a probability
+distribution or a confidence interval** — an honest "roughly this wide", not "95 % of people".
+
+### 6.2 How it is built
+
+`concentrationBandSeriesMgL(doses, profile, xs)` returns `{ center, low, high }`. `center` is the
+ordinary best estimate. `high` and `low` are the **pointwise max / min over a small set of parameter
+scenarios**, evaluated at every time point:
+
+- **Volume of distribution** `Vd`: 0.5–0.7 L/kg (centre 0.6). A pure scale factor — low `Vd` raises
+  the whole curve.
+- **Elimination half-life**: ±30 % around the user's selected value. This is what makes the band
+  **widen over the day** — two plausible half-lives diverge as caffeine is cleared, so late-day
+  estimates are visibly less certain than the morning's.
+- **Absorption `ka`**: 3.4–6.4 /h. Mostly shifts the height/time of the early peak.
+- **Dose content** (`dose.frac`): each drink's caffeine content uncertainty — heuristic ± fractions of
+  **0.10** (typed mg), **0.20** (average preset) or **0.35** (home brew, reusing the brew band). This
+  is why a home-brewed coffee produces a wider band than a known caffeine tablet.
+
+These are exactly the three tiers to keep separate:
+
+| Tier | Parameters | Basis |
+|---|---|---|
+| Literature spread | `Vd`, `ka` ranges | population ranges from the PK sources (§2.5) |
+| Conservative modelling | ±30 % half-life | a deliberate assumption, not a measured spread |
+| Heuristic | dose `frac` (incl. brew) | documented estimates, not measurements |
+
+Taking min/max **at each time point** (rather than one fixed "low person" and one "high person") lets
+the edges be formed by different scenarios at different times — a fast-absorption scenario near the
+peak, a long-half-life scenario in the tail. By construction the band always contains `center`: the
+centre scenario is in both the high and low sets, and content-high ≥ centre ≥ content-low. It is
+computed from a handful of full-curve scenarios — deterministic, no Monte-Carlo simulation.
+
+### 6.3 Model-validity boundary (toxic range)
+
+The whole model assumes **linear, first-order elimination at a constant half-life**. That is a good
+approximation at ordinary exposures, but at high concentrations caffeine metabolism can **saturate and
+become nonlinear**, and the elimination half-life can lengthen substantially. So the constant-half-life
+curve becomes unreliable — and specifically **optimistic** — in the toxic range.
+
+`pkForecastReliable(mgL)` returns `false` at or above `TOXIC_THRESHOLD_MGL` (15 mg/L). When the day's
+peak crosses it, the shell (`app.js`):
+
+- shows a prominent model-boundary **warning**;
+- **stops presenting precise recovery / bedtime numbers** ("back below X by HH:MM"), which depend on
+  the very decay law that no longer holds.
+
+Coffinat deliberately does **not** build an overdose/toxicokinetic model — a clear statement of the
+boundary is more honest than false precision. Tolerance never enters here either: the toxicity
+classification always uses the raw estimated concentration (§5.2).
+
+---
+
+## 7. How the pieces interact
 
 ```
   presets ─┐
@@ -392,13 +450,15 @@ with the curve you see.
 
 ---
 
-## 7. Assumptions and limitations
+## 8. Assumptions and limitations
 
 - **Population averages.** One set of constants for everyone; real `Vd`, `t½` and sensitivity vary
-  two‑ to three‑fold between people.
+  two‑ to three‑fold between people. The plausible-range band (§6) makes this spread visible but is a
+  scenario range, not a probability.
 - **One compartment, linear kinetics.** Caffeine elimination is *approximately* first‑order at normal
-  intakes; at very high (toxic) doses real kinetics can saturate. The high bands are therefore an
-  escalation guide, not a clinical model.
+  intakes; at very high (toxic) doses real kinetics can saturate and the half-life can lengthen
+  substantially. The model therefore becomes unreliable — and optimistic — in the toxic range, so the
+  app marks it invalid there and withholds recovery-time predictions (§6.3) rather than guessing.
 - **Total plasma concentration.** The output is total caffeine in mg/L; protein binding (~10–30 %) is
   not separated out.
 - **Fixed absorption.** `ka` does not vary with food, formulation, or drink volume, which do affect
@@ -411,7 +471,7 @@ with the curve you see.
 
 ---
 
-## 8. Symbols
+## 9. Symbols
 
 | Symbol | Meaning | Unit |
 |---|---|---|
@@ -428,7 +488,7 @@ with the curve you see.
 
 ---
 
-## 9. References
+## 10. References
 
 - **Caffeine** — StatPearls, NCBI Bookshelf (NBK519490). <https://www.ncbi.nlm.nih.gov/books/NBK519490/>
 - **Caffeine Toxicity** — StatPearls, NCBI Bookshelf (NBK532910). <https://www.ncbi.nlm.nih.gov/books/NBK532910/>

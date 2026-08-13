@@ -46,8 +46,9 @@ It works out how much caffeine was extracted and the dose in your serving, then 
 same model as any other drink.
 
 **A caffeine-level "traffic light".** A ladder (Settled → Alert → Energised → Overstimulated →
-Excessive → Hazardous) marks where you are **now**, your **actual peak** (amber, matching the chart's
-actual line) and — with the forecast on — your **predicted peak** (teal, matching the forecast line),
+Excessive → Hazardous) marks where you are **now**, your **estimated peak** from the drinks you've
+logged (amber, matching the chart's estimate line) and — with the forecast on — your **predicted
+peak** with the planned drink (teal, matching the forecast line),
 with the symptoms that typically correlate to each band. A **tolerance** setting (none / light /
 moderate / strong) softens how strongly a level is felt — it shifts the ladder only, never the blood
 concentration. These are population averages and depend heavily on tolerance; regular users feel far
@@ -234,6 +235,21 @@ matters); espresso uses the cup yield directly rather than filter-style water re
 **representative values, not laboratory measurements**, and the extraction-over-time curve is a
 deliberate modelling assumption, so the calculator shows a rough **±band** rather than a single precise
 figure. Real yields vary widely with grind, dose, agitation, temperature, pressure and contact time.
+
+**Plausible-range band.** The chart draws a shaded envelope around the solid estimate. It is a
+deterministic **scenario band, not a confidence interval**: the model is re-run across plausible values
+for volume of distribution, elimination half-life, absorption timing and each drink's caffeine content,
+and the chart shades between the pointwise lowest and highest curves. Because half-life differences
+compound over time, the band widens later in the day; because a home brew's content is less certain
+than a typed-in milligram figure, brewed drinks widen it more. (`concentrationBandSeriesMgL` in
+`model.js`; the ranges are documented there as literature spreads vs. conservative modelling
+assumptions vs. heuristic brew uncertainty.)
+
+**Toxic-range boundary.** The model assumes linear, constant-half-life elimination. That holds at
+ordinary exposures but **breaks down in the toxic range (≈15 mg/L and up)**, where caffeine clearance
+can become nonlinear and much slower. There the app stops trusting the forecast: it shows a warning and
+withholds precise recovery/bedtime times rather than presenting false precision. Coffinat deliberately
+does not attempt to model overdose kinetics.
 
 Constants are population averages from published pharmacology and coffee-chemistry sources:
 
