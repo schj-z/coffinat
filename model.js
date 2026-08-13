@@ -50,11 +50,15 @@
  *
  * ── Uncertainty & validity ─────────────────────────────────────────────────────────────────
  * concentrationBandSeriesMgL returns a plausible-range ENVELOPE {center, low, high} — a deterministic
- * scenario band (NOT a probability/CI) from plausible spreads in Vd, half-life, absorption and dose
- * content (PK_UNCERTAINTY, DOSE_UNCERTAINTY). The half-life spread makes it widen over the day.
+ * scenario band (NOT a probability/CI). It is the pointwise min/max over ALL low/high corners of the
+ * Vd/half-life/absorption box (pkScenarioParams) plus per-dose content spread (DOSE_UNCERTAINTY), so
+ * every scenario the model considers lies inside it. The half-life spread makes it widen over the day.
+ * The same envelope is drawn around a planned-drink forecast, not just logged drinks.
  * pkForecastReliable(mgL) is false in the toxic range (≥ TOXIC_THRESHOLD_MGL): there the linear
- * constant-half-life model breaks down (saturable kinetics, lengthening half-life), so the UI warns
- * and withholds recovery-time claims rather than showing false precision. No overdose model is attempted.
+ * constant-half-life model breaks down (saturable kinetics, lengthening half-life). The UI escalates
+ * in two tiers — a strong warning when the CENTRE estimate crosses it, a weaker caution when only the
+ * upper plausible bound does — and withholds recovery-time claims rather than showing false precision.
+ * No overdose model is attempted; tolerance never affects either threshold.
  *
  * This is an ES module: imported by the browser (js/*.js via <script type="module">) and by the
  * Node test runner (model.test.js).
@@ -147,9 +151,13 @@ export function concentrationSeriesMgL(doses, profile, xsMin) {
 // ±30 % around whatever half-life the user selected. Because elimination compounds over time, the
 // half-life spread is what makes the band widen through the day — the honest signal that a forecast
 // 8 h out is far less certain than one 1 h out.
+// These are REPRESENTATIVE MODELLING BOUNDS, not the full literature range. Vd here spans 0.5–0.7
+// L/kg — a deliberately moderate band around the 0.6 centre; the wider literature spread reaches
+// ~0.8, but a moderate band keeps the envelope from overstating certainty in either direction. The
+// half-life bound is likewise a conservative ±30 % modelling assumption, not a measured population SD.
 export const PK_UNCERTAINTY = {
-  vdLoPerKg: 0.5, // L/kg — raises concentration (population ~0.5–0.8, centre 0.6)
-  vdHiPerKg: 0.7, // L/kg — lowers concentration
+  vdLoPerKg: 0.5, // L/kg — raises concentration (representative low bound; centre 0.6)
+  vdHiPerKg: 0.7, // L/kg — lowers concentration (representative high bound; literature reaches ~0.8)
   halfLifeFracLo: 0.7, // × selected t½ → faster elimination (lower tail)
   halfLifeFracHi: 1.3, // × selected t½ → slower elimination (higher tail)
   kaLoPerH: 3.4, // absorption spread around 4.9/h (~±30 %): later, lower peak
@@ -179,46 +187,68 @@ function scenarioSeries(doses, xsMin, vdL, keH, kaPerH, mgOf) {
 }
 
 /**
+ * The PK parameter scenarios whose pointwise min/max define the plausible-range envelope: the centre
+ * (best estimate) plus EVERY low/high combination of volume of distribution, elimination half-life and
+ * absorption rate (PK_UNCERTAINTY) — 1 + 2³ = 9 scenarios. Enumerating all corners of the parameter
+ * box (rather than a few hand-picked combinations) makes the band genuinely bound every scenario the
+ * model claims to consider. Exposed so tests can confirm each scenario stays inside the band.
+ * Deterministic; not probabilistic.
+ */
+export function pkScenarioParams(profile) {
+  const massKg = profile.massKg
+  const H = profile.halfLifeH
+  const u = PK_UNCERTAINTY
+  const vd0 = volumeOfDistributionL(massKg)
+  const ke0 = keFromHalfLife(H)
+  const scenarios = [{ vdL: vd0, keH: ke0, kaPerH: PK.KA_PER_H }] // centre → band always encloses the estimate
+  const vds = [u.vdLoPerKg * massKg, u.vdHiPerKg * massKg]
+  const kes = [keFromHalfLife(H * u.halfLifeFracLo), keFromHalfLife(H * u.halfLifeFracHi)]
+  const kas = [u.kaLoPerH, u.kaHiPerH]
+  for (const vdL of vds) for (const keH of kes) for (const kaPerH of kas) scenarios.push({ vdL, keH, kaPerH })
+  return scenarios
+}
+
+/**
  * Plausible-range envelope for the concentration curve: { center, low, high } arrays over xsMin.
  *
  * `center` is the best estimate (identical to concentrationSeriesMgL). `high`/`low` are the pointwise
- * max/min over a small set of parameter scenarios that vary volume of distribution, elimination
- * half-life and absorption timing (PK_UNCERTAINTY), combined with each dose's own content uncertainty
- * (`dose.frac`). Taking the max/min AT EACH TIME POINT — rather than one fixed "high person" and one
- * "low person" — lets the band widen over the day as plausible half-lives diverge, and near the peak
- * as absorption timing varies. By construction the band always contains `center` (the centre scenario
- * is included in both sets, and content-high ≥ centre ≥ content-low). Deterministic; no simulation.
+ * max/min AT EACH TIME POINT over ALL scenarios from pkScenarioParams (every low/high corner of Vd,
+ * half-life and absorption), each combined with each dose's own content uncertainty (`dose.frac`): the
+ * upper edge weights doses at content-high, the lower edge at content-low. Because the kernel is linear
+ * in dose, one unit-dose evaluation per (scenario, time, dose) yields both edges. The band widens over
+ * the day as plausible half-lives diverge, and near the peak as absorption timing varies, and — by
+ * construction (centre scenario included; content-high ≥ centre ≥ content-low) — always contains
+ * `center`. Deterministic; no Monte-Carlo simulation.
  */
 export function concentrationBandSeriesMgL(doses, profile, xsMin) {
-  const massKg = profile.massKg
-  const H = profile.halfLifeH
-  const vd0 = volumeOfDistributionL(massKg)
-  const ke0 = keFromHalfLife(H)
+  const vd0 = volumeOfDistributionL(profile.massKg)
+  const ke0 = keFromHalfLife(profile.halfLifeH)
   const zeros = () => xsMin.map(() => 0)
   const center = scenarioSeries(doses, xsMin, vd0, ke0, PK.KA_PER_H, mgCenter)
   if (!(vd0 > 0) || !(ke0 > 0)) return { center: zeros(), low: zeros(), high: zeros() }
 
-  const u = PK_UNCERTAINTY
-  const vdLo = u.vdLoPerKg * massKg
-  const vdHi = u.vdHiPerKg * massKg
-  const keSlow = keFromHalfLife(H * u.halfLifeFracHi) // long t½ → small ke → high tail
-  const keFast = keFromHalfLife(H * u.halfLifeFracLo) // short t½ → large ke → low tail
-
-  // Upper edge: high scale (low Vd) + fast absorption, with both fast- and slow-elimination scenarios
-  // so the max bounds the peak AND the tail; plus the centre scenario at content-high so the band is
-  // guaranteed to enclose the centre. Lower edge mirrors it.
-  const highSeries = [
-    scenarioSeries(doses, xsMin, vdLo, keSlow, u.kaHiPerH, mgHigh),
-    scenarioSeries(doses, xsMin, vdLo, keFast, u.kaHiPerH, mgHigh),
-    scenarioSeries(doses, xsMin, vd0, ke0, PK.KA_PER_H, mgHigh),
-  ]
-  const lowSeries = [
-    scenarioSeries(doses, xsMin, vdHi, keFast, u.kaLoPerH, mgLow),
-    scenarioSeries(doses, xsMin, vdHi, keSlow, u.kaLoPerH, mgLow),
-    scenarioSeries(doses, xsMin, vd0, ke0, PK.KA_PER_H, mgLow),
-  ]
-  const high = xsMin.map((_, i) => Math.max(highSeries[0][i], highSeries[1][i], highSeries[2][i]))
-  const low = xsMin.map((_, i) => Math.min(lowSeries[0][i], lowSeries[1][i], lowSeries[2][i]))
+  const scenarios = pkScenarioParams(profile)
+  const n = xsMin.length
+  const high = new Array(n).fill(0)
+  const low = new Array(n).fill(Infinity)
+  for (const s of scenarios) {
+    for (let i = 0; i < n; i++) {
+      const xMin = xsMin[i]
+      let hi = 0
+      let lo = 0
+      for (const d of doses) {
+        const tauH = (xMin - d.absMin) / 60
+        if (tauH > 0) {
+          const g = doseConcentrationMgL(1, tauH, s.vdL, s.keH, s.kaPerH) // unit-dose kernel (linear in dose)
+          hi += mgHigh(d) * g
+          lo += mgLow(d) * g
+        }
+      }
+      if (hi > high[i]) high[i] = hi
+      if (lo < low[i]) low[i] = lo
+    }
+  }
+  for (let i = 0; i < n; i++) if (!Number.isFinite(low[i])) low[i] = 0 // no dose contributed → 0
   return { center, low, high }
 }
 

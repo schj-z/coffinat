@@ -360,11 +360,14 @@ distribution or a confidence interval** — an honest "roughly this wide", not "
 ### 6.2 How it is built
 
 `concentrationBandSeriesMgL(doses, profile, xs)` returns `{ center, low, high }`. `center` is the
-ordinary best estimate. `high` and `low` are the **pointwise max / min over a small set of parameter
-scenarios**, evaluated at every time point:
+ordinary best estimate. `high` and `low` are the **pointwise max / min over ALL parameter scenarios**,
+evaluated at every time point. The scenarios are the centre plus **every low/high corner** of the
+parameter box (`pkScenarioParams` → 1 + 2³ = 9), so the band genuinely bounds every scenario the model
+claims to consider — not just a few hand-picked ones. The same envelope is drawn around a planned-drink
+forecast, not only logged drinks.
 
-- **Volume of distribution** `Vd`: 0.5–0.7 L/kg (centre 0.6). A pure scale factor — low `Vd` raises
-  the whole curve.
+- **Volume of distribution** `Vd`: 0.5–0.7 L/kg (centre 0.6) — **representative modelling bounds**, not
+  the full literature range (~0.5–0.8); a pure scale factor, low `Vd` raises the whole curve.
 - **Elimination half-life**: ±30 % around the user's selected value. This is what makes the band
   **widen over the day** — two plausible half-lives diverge as caffeine is cleared, so late-day
   estimates are visibly less certain than the morning's.
@@ -377,15 +380,17 @@ These are exactly the three tiers to keep separate:
 
 | Tier | Parameters | Basis |
 |---|---|---|
-| Literature spread | `Vd`, `ka` ranges | population ranges from the PK sources (§2.5) |
+| Representative modelling bounds | `Vd` 0.5–0.7, `ka` ranges | a moderate band informed by the PK sources (§2.5), not the full literature spread |
 | Conservative modelling | ±30 % half-life | a deliberate assumption, not a measured spread |
 | Heuristic | dose `frac` (incl. brew) | documented estimates, not measurements |
 
-Taking min/max **at each time point** (rather than one fixed "low person" and one "high person") lets
-the edges be formed by different scenarios at different times — a fast-absorption scenario near the
-peak, a long-half-life scenario in the tail. By construction the band always contains `center`: the
-centre scenario is in both the high and low sets, and content-high ≥ centre ≥ content-low. It is
-computed from a handful of full-curve scenarios — deterministic, no Monte-Carlo simulation.
+Taking min/max **at each time point** over all corners (rather than one fixed "low person" and one
+"high person") lets the edges be formed by different scenarios at different times — a fast-absorption
+scenario near the peak, a long-half-life scenario in the tail. Because the kernel is linear in dose,
+one unit-dose evaluation per (scenario, time, dose) yields both the content-high and content-low edges,
+so all nine scenarios cost one pass, not two. By construction the band always contains `center`: the
+centre scenario is enumerated, and content-high ≥ centre ≥ content-low. Deterministic; no Monte-Carlo
+simulation. A test (`model.test.js`) confirms every scenario × content weighting stays inside the band.
 
 ### 6.3 Model-validity boundary (toxic range)
 
@@ -394,16 +399,19 @@ approximation at ordinary exposures, but at high concentrations caffeine metabol
 become nonlinear**, and the elimination half-life can lengthen substantially. So the constant-half-life
 curve becomes unreliable — and specifically **optimistic** — in the toxic range.
 
-`pkForecastReliable(mgL)` returns `false` at or above `TOXIC_THRESHOLD_MGL` (15 mg/L). When the day's
-peak crosses it, the shell (`app.js`):
+`pkForecastReliable(mgL)` returns `false` at or above `TOXIC_THRESHOLD_MGL` (15 mg/L). The shell
+(`app.js`) checks this over **both the logged and the planned trajectories**, in two tiers:
 
-- shows a prominent model-boundary **warning**;
-- **stops presenting precise recovery / bedtime numbers** ("back below X by HH:MM"), which depend on
-  the very decay law that no longer holds.
+- **Centre crosses the threshold** → a prominent model-boundary **warning**, and it **stops presenting
+  precise recovery / bedtime numbers** ("back below X by HH:MM"), which depend on the very decay law
+  that no longer holds.
+- **Only the upper plausible bound crosses** (centre still below) → a **weaker caution** that some
+  modelled scenarios reach the invalid range. The user is *not* classified as toxic on the strength of
+  the uncertainty bound alone.
 
-Coffinat deliberately does **not** build an overdose/toxicokinetic model — a clear statement of the
-boundary is more honest than false precision. Tolerance never enters here either: the toxicity
-classification always uses the raw estimated concentration (§5.2).
+Both tiers use the **raw** estimated concentration — tolerance never weakens either (§5.2). Coffinat
+deliberately does **not** build an overdose/toxicokinetic model; a clear statement of the boundary is
+more honest than false precision.
 
 ---
 

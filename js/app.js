@@ -67,10 +67,12 @@ function render() {
     : null
   const effectiveDoses = plannedDose ? actualDoses.concat([plannedDose]) : actualDoses
 
-  // The plausible-range envelope wraps the ACTUAL (logged) curve; its centre IS the best estimate.
+  // The plausible-range envelope wraps the logged-drink curve AND (when a drink is planned) the
+  // forecast curve; each centre IS that trajectory's best estimate.
   const actualBand = M.concentrationBandSeriesMgL(actualDoses, state.profile, chart.XS)
   const actualSeries = actualBand.center
-  const forecastSeries = plannedDose ? M.concentrationSeriesMgL(effectiveDoses, state.profile, chart.XS) : null
+  const forecastBand = plannedDose ? M.concentrationBandSeriesMgL(effectiveDoses, state.profile, chart.XS) : null
+  const forecastSeries = forecastBand ? forecastBand.center : null
 
   // Peaks: the most you reach from what's actually logged, and — with the forecast on — the most
   // you'd reach if you also had the planned drink.
@@ -99,18 +101,31 @@ function render() {
     : 'Guideline: up to ' + M.DAILY_LIMIT_MG + ' mg/day, ' + M.SINGLE_DOSE_CAUTION_MG + ' mg per dose.'
 
   // Model-validity: above the toxic threshold the constant-half-life PK model is unreliable (real
-  // clearance can slow markedly), so we warn and stop presenting precise recovery/bedtime numbers.
-  const peakForValidity = Math.max(actualPeak.val, predictedPeak ? predictedPeak.val : 0)
-  const pkReliable = M.pkForecastReliable(peakForValidity)
-  if (!pkReliable) {
+  // clearance can slow markedly). Two tiers, over BOTH the logged and planned trajectories, using RAW
+  // concentration (tolerance never applies here): a strong warning if the centre estimate crosses the
+  // threshold; a weaker caution if only the upper plausible bound does.
+  const centerPeakMax = Math.max(actualPeak.val, predictedPeak ? predictedPeak.val : 0)
+  const upperPeakMax = Math.max(maxOf(actualBand.high), forecastBand ? maxOf(forecastBand.high) : 0)
+  const centerReliable = M.pkForecastReliable(centerPeakMax)
+  const upperReliable = M.pkForecastReliable(upperPeakMax)
+  if (!centerReliable) {
     els.modelWarning.hidden = false
+    els.modelWarning.dataset.tier = 'strong'
     els.modelWarning.textContent =
       '⚠ Estimated levels reach the toxic range (≥ ' + M.TOXIC_THRESHOLD_MGL + ' mg/L). Above this, ' +
       'caffeine can be cleared far more slowly than this model assumes, so the curve here — and any ' +
       'time it shows you dropping back below a level — is unreliable and likely optimistic. Treat it ' +
       'as a warning, not a prediction; a real overdose needs medical advice.'
+  } else if (!upperReliable) {
+    els.modelWarning.hidden = false
+    els.modelWarning.dataset.tier = 'caution'
+    els.modelWarning.textContent =
+      'Note: your central estimate stays below the toxic range, but some plausible scenarios reach it ' +
+      '(≥ ' + M.TOXIC_THRESHOLD_MGL + ' mg/L), where this model stops being reliable. The true value ' +
+      'is uncertain — treat high readings with caution.'
   } else {
     els.modelWarning.hidden = true
+    els.modelWarning.dataset.tier = ''
     els.modelWarning.textContent = ''
   }
 
@@ -119,11 +134,11 @@ function render() {
   const bedVal = bedAbs != null ? M.concentrationAtMgL(effectiveDoses, bedAbs, state.profile) : 0
   els.bedLabel.textContent = 'At bedtime (' + (state.sleep.time || '—') + ')'
   const bedOver = bedVal > state.sleep.thresholdMgL
-  setValue(els.bed, bedVal.toFixed(2), 'mg/L', bedAbs == null || !pkReliable ? null : bedOver ? 'summary__value--over' : 'summary__value--ok')
+  setValue(els.bed, bedVal.toFixed(2), 'mg/L', bedAbs == null || !centerReliable ? null : bedOver ? 'summary__value--over' : 'summary__value--ok')
 
   if (bedAbs == null) {
     els.flag.hidden = true
-  } else if (!pkReliable) {
+  } else if (!centerReliable) {
     // The bedtime figure rides on the (unreliable) decay from a toxic peak — don't assert it.
     els.flag.hidden = false
     els.flag.dataset.state = 'over'
@@ -143,6 +158,8 @@ function render() {
     actualLow: actualBand.low,
     actualHigh: actualBand.high,
     forecast: forecastSeries,
+    forecastLow: forecastBand ? forecastBand.low : null,
+    forecastHigh: forecastBand ? forecastBand.high : null,
     threshold: util.num(state.sleep.thresholdMgL),
     bedAbs: bedAbs,
     nowAbs: nowInWindow ? nowAbsRaw : null,
@@ -155,6 +172,13 @@ function render() {
   })
   calendar.render(api)
   log.render(api)
+}
+
+/** The maximum value in an array (loop, not Math.max(...spread), to stay safe for long series). */
+function maxOf(arr) {
+  let m = 0
+  for (let i = 0; i < arr.length; i++) if (arr[i] > m) m = arr[i]
+  return m
 }
 
 /** The maximum of a concentration series and the minute at which it occurs. */

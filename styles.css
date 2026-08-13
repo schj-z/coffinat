@@ -444,6 +444,13 @@ a {
   line-height: 1.5;
 }
 
+/* Weaker tier: only the upper plausible bound crosses into the toxic range. Amber, not red. */
+.chart__warning[data-tier='caution'] {
+  border-left-color: var(--warn);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
 .chart__warning[hidden] {
   display: none;
 }

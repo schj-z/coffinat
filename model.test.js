@@ -229,6 +229,39 @@ test('doseUncertaintyFrac orders brew > preset > manual, with a preset default',
   assert.equal(M.doseUncertaintyFrac('nonsense'), M.doseUncertaintyFrac('preset'))
 })
 
+test('pkScenarioParams enumerates the centre + all 2³ low/high corners (9 scenarios)', () => {
+  const s = M.pkScenarioParams(PROFILE)
+  assert.equal(s.length, 9)
+  const vd0 = M.volumeOfDistributionL(PROFILE.massKg)
+  const ke0 = M.keFromHalfLife(PROFILE.halfLifeH)
+  // The centre scenario (best estimate) must be present so the band always encloses it.
+  assert.ok(s.some((x) => Math.abs(x.vdL - vd0) < 1e-9 && Math.abs(x.keH - ke0) < 1e-9 && Math.abs(x.kaPerH - M.PK.KA_PER_H) < 1e-9))
+})
+
+test('EVERY modeled scenario × content weighting stays inside the envelope (robust enumeration)', () => {
+  const doses = [
+    { mg: 120, absMin: 8 * 60, frac: 0.2 },
+    { mg: 90, absMin: 12 * 60, frac: 0.35 },
+  ]
+  const b = M.concentrationBandSeriesMgL(doses, PROFILE, XS_DAY)
+  const scenarios = M.pkScenarioParams(PROFILE)
+  const weightings = [(d) => d.mg * (1 - (d.frac || 0)), (d) => d.mg, (d) => d.mg * (1 + (d.frac || 0))]
+  const eps = 1e-9
+  for (const s of scenarios) {
+    for (const w of weightings) {
+      for (let i = 0; i < XS_DAY.length; i++) {
+        let c = 0
+        for (const d of doses) {
+          const tau = (XS_DAY[i] - d.absMin) / 60
+          if (tau > 0) c += M.doseConcentrationMgL(w(d), tau, s.vdL, s.keH, s.kaPerH)
+        }
+        assert.ok(c <= b.high[i] + eps, `scenario above band at i=${i}: ${c} > ${b.high[i]}`)
+        assert.ok(c >= b.low[i] - eps, `scenario below band at i=${i}: ${c} < ${b.low[i]}`)
+      }
+    }
+  }
+})
+
 // ────────────────────────────────────────────────────────────── model-validity boundary
 
 test('pkForecastReliable turns off in the toxic range (>= 15 mg/L)', () => {

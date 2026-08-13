@@ -75,40 +75,40 @@ function build(ctx) {
 
   // Plausible-range envelope: two stacked lines (invisible low baseline + high−low fill) draw a
   // translucent band between low and high, kept visually subordinate to the solid centre line. Faint
-  // edge strokes give a non-colour cue so the band reads without relying on the fill colour alone.
-  if (ctx.actualLow && ctx.actualHigh) {
-    series.unshift(
+  // edge strokes give a non-colour cue so the band reads without relying on the fill colour alone. The
+  // same helper draws the logged-drink band (solid edges) and, when a drink is planned, the forecast
+  // band (dashed edges, matching the dashed forecast line and a touch fainter to stay secondary).
+  function bandSeries(low, high, color, stackName, fillOpacity, edgeDashed) {
+    return [
       {
-        name: '__band_low',
-        type: 'line',
-        stack: 'band',
-        z: 1,
-        silent: true,
-        showSymbol: false,
-        smooth: 0.3,
-        lineStyle: { color: accent, width: 1, opacity: 0.35 },
+        name: '__' + stackName + '_low',
+        type: 'line', stack: stackName, z: 1, silent: true, showSymbol: false, smooth: 0.3,
+        lineStyle: { color: color, width: 1, opacity: 0.3, type: edgeDashed ? 'dashed' : 'solid' },
         areaStyle: { opacity: 0 },
-        data: ctx.actualLow.map((y, i) => [XS[i], round2(y)]),
+        data: low.map((y, i) => [XS[i], round2(y)]),
       },
       {
-        name: '__band_fill',
-        type: 'line',
-        stack: 'band',
-        z: 1,
-        silent: true,
-        showSymbol: false,
-        smooth: 0.3,
-        lineStyle: { color: accent, width: 1, opacity: 0.35 },
-        areaStyle: { color: accent, opacity: 0.14 },
-        data: ctx.actualHigh.map((y, i) => [XS[i], round2(Math.max(0, y - ctx.actualLow[i]))]),
+        name: '__' + stackName + '_fill',
+        type: 'line', stack: stackName, z: 1, silent: true, showSymbol: false, smooth: 0.3,
+        lineStyle: { color: color, width: 1, opacity: 0.3, type: edgeDashed ? 'dashed' : 'solid' },
+        areaStyle: { color: color, opacity: fillOpacity },
+        data: high.map((y, i) => [XS[i], round2(Math.max(0, y - low[i]))]),
       },
-    )
+    ]
+  }
+
+  if (ctx.actualLow && ctx.actualHigh) {
+    series.unshift(...bandSeries(ctx.actualLow, ctx.actualHigh, accent, 'band', 0.14, false))
   }
 
   if (ctx.forecast) {
+    if (ctx.forecastLow && ctx.forecastHigh) {
+      series.push(...bandSeries(ctx.forecastLow, ctx.forecastHigh, forecast, 'fcband', 0.1, true))
+    }
     series.push({
       name: 'Forecast',
       type: 'line',
+      z: 2,
       showSymbol: false,
       smooth: 0.3,
       lineStyle: { color: forecast, width: 2, type: 'dashed', cap: 'round' },
@@ -132,14 +132,19 @@ function build(ctx) {
         for (const p of params) {
           if (p.seriesName && p.seriesName.indexOf('__') === 0) continue // skip the band helper series
           s += '<br>' + p.marker + p.seriesName + ': ' + p.value[1].toFixed(2) + ' mg/L'
-        }
-        if (ctx.actualLow && ctx.actualHigh && i != null && ctx.actualLow[i] != null) {
-          s +=
-            '<br><span style="opacity:.7">Plausible range: ' +
-            ctx.actualLow[i].toFixed(2) +
-            '–' +
-            ctx.actualHigh[i].toFixed(2) +
-            ' mg/L</span>'
+          // Each real line carries its own plausible range beneath it.
+          let lo = null
+          let hi = null
+          if (p.seriesName === 'Estimate' && ctx.actualLow) {
+            lo = ctx.actualLow[i]
+            hi = ctx.actualHigh[i]
+          } else if (p.seriesName === 'Forecast' && ctx.forecastLow) {
+            lo = ctx.forecastLow[i]
+            hi = ctx.forecastHigh[i]
+          }
+          if (lo != null && hi != null) {
+            s += '<br><span style="opacity:.7">&nbsp;&nbsp;plausible ' + lo.toFixed(2) + '–' + hi.toFixed(2) + ' mg/L</span>'
+          }
         }
         return s
       },
