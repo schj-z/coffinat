@@ -13,8 +13,10 @@ except this one tries to get your coffee timing right.
 
 - **Static site.** Plain HTML/CSS plus native ES modules and one vendored chart library
   ([ECharts](https://echarts.apache.org/)). No backend, no database, no build step, no framework.
-- **Your data stays yours.** Everything is computed in your browser and saved to `localStorage`,
-  per day. There are no network requests and no tracking.
+- **Your data stays yours.** Everything you enter is computed in your browser and saved to
+  `localStorage`, per day. The app transmits none of it and adds no cookies, analytics or tracking —
+  beyond fetching its own files. (Loading any site, including this one, still contacts its host, which
+  sees normal request metadata like your IP and user-agent; that's outside the app's control.)
 - **Serve it anywhere.** Any static webserver works — the included Caddy container, `python3 -m
   http.server`, or GitHub Pages. (It uses ES modules, so it needs an HTTP origin — opening the bare
   `index.html` file over `file://` won't work; use one of the above.)
