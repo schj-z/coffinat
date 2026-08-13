@@ -73,7 +73,9 @@
             <li class="legend__item"><span class="legend__swatch legend__swatch--threshold"></span>Sleep limit</li>
           </ul>
         </div>
-        <div id="chart" class="chart" role="img" aria-label="Estimated blood caffeine concentration over 24 hours"></div>
+        <div class="chart-scroll">
+          <div id="chart" class="chart" role="img" aria-label="Estimated blood caffeine concentration over 24 hours"></div>
+        </div>
         <p class="chart__flag" id="sleep-flag" hidden></p>
       </section>
 
@@ -140,8 +142,10 @@
       <section class="card" aria-label="Sleep goal">
         <h2>Sleep goal</h2>
         <p class="card__lead muted">
-          Set the level you want to be under by bedtime. As a rough guide, lower is better for sleep;
-          many people aim well below ~1–2 mg/L.
+          Set the level you want to be under by bedtime. As a rough guide, lower is better for sleep,
+          and caffeine taken within about six hours of bed can measurably disrupt it. There is no
+          established "safe" blood-caffeine level for sleep, so treat this as a personal target you
+          choose — not a recommendation. See <a href="#about">sources</a> below.
         </p>
         <div class="fields">
           <label class="field">
@@ -155,7 +159,7 @@
         </div>
       </section>
 
-      <footer class="footnote muted">
+      <footer id="about" class="footnote muted">
         <h3>How this works</h3>
         <p>
           Each drink is modelled with a one-compartment pharmacokinetic (Bateman) model: caffeine is
@@ -165,7 +169,74 @@
           the residual caffeine carried over from the previous days. Constants are population averages
           from published pharmacology; your own metabolism may differ substantially.
         </p>
-        <p><strong>Not medical advice.</strong> Educational estimate only.</p>
+
+        <h3>Your privacy</h3>
+        <p>
+          Everything runs in your browser. Your body mass, drinks, times, sleep goal and any custom
+          product names are computed locally and saved only in this browser's <code>localStorage</code>.
+          Nothing you enter is sent anywhere — the app makes no network requests and uses no cookies,
+          analytics or trackers. Clearing your browser storage deletes your data; there is no account
+          and nothing on any server. Because the page is public, treat anything you would not want
+          public as such — but your entries never leave your device.
+        </p>
+
+        <h3>Limitations</h3>
+        <p>
+          This is an educational model, not a measurement. Every constant is a population average;
+          real caffeine metabolism varies widely with genetics, smoking, pregnancy, medication, liver
+          function and more, and the effect bands depend heavily on tolerance. The home-brew figures
+          are rough estimates that ignore grind, agitation and water chemistry. The model shows an
+          <em>estimate</em>; it does not tell you an amount that is safe to drink.
+          <strong>Not medical advice</strong> — do not use it for medical or dosing decisions.
+        </p>
+
+        <h3>Sources</h3>
+        <p>All constants are population averages from published sources:</p>
+        <ul>
+          <li>
+            Caffeine pharmacokinetics —
+            <a href="https://www.ncbi.nlm.nih.gov/books/NBK519490/" target="_blank" rel="noopener noreferrer">StatPearls, NIH (NBK519490)</a>;
+            <a href="https://www.liebertpub.com/doi/abs/10.1089/caff.2017.0011" target="_blank" rel="noopener noreferrer">Alsabri et al., <em>J. Caffeine Res.</em> 2018</a>;
+            <a href="https://www.efsa.europa.eu/sites/default/files/event/documentset/150305-p09.pdf" target="_blank" rel="noopener noreferrer">EFSA caffeine assessment</a>.
+          </li>
+          <li>
+            Daily limits (400 mg/day; 200 mg single dose) —
+            <a href="https://www.efsa.europa.eu/en/topics/topic/caffeine" target="_blank" rel="noopener noreferrer">EFSA Scientific Opinion on caffeine (2015)</a>.
+          </li>
+          <li>
+            Caffeine and sleep timing —
+            <a href="https://doi.org/10.5664/jcsm.3170" target="_blank" rel="noopener noreferrer">Drake et al., <em>J. Clin. Sleep Med.</em> 2013</a>
+            (caffeine 0, 3 or 6 h before bed all disrupted sleep).
+          </li>
+          <li>
+            Effect / toxicity bands —
+            <a href="https://www.ncbi.nlm.nih.gov/books/NBK532910/" target="_blank" rel="noopener noreferrer">Caffeine Toxicity, StatPearls (NBK532910)</a>
+            (therapeutic ≈4–8 mg/L, toxicity from ≈15 mg/L, ≈80–100 mg/L potentially lethal).
+          </li>
+          <li>
+            Brew extraction (bean pool, method efficiency) —
+            <a href="https://simonandbearns.coffee/en/blogs/kaffeeblog/coffee-caffeine-content-arabica-vs-robusta-and-by-brewing-method" target="_blank" rel="noopener noreferrer">Arabica vs Robusta &amp; by method</a>;
+            <a href="https://dabov.us/blog/how-brewing-methods-affect-caffeine-content-in-coffee" target="_blank" rel="noopener noreferrer">how brew methods affect caffeine</a>.
+          </li>
+        </ul>
+
+        <h3>Credits &amp; licence</h3>
+        <p>
+          Coffinat is free software released under the
+          <a href="https://github.com/schj-z/coffinat/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT licence</a>,
+          provided <strong>as is, without warranty of any kind</strong> — you use it, and any estimate
+          it produces, at your own risk. It bundles
+          <a href="https://echarts.apache.org/" target="_blank" rel="noopener noreferrer">Apache ECharts</a>
+          (self-hosted, under the Apache 2.0 licence). The coffee-cup mark is original to this project.
+        </p>
+
+        <h3>Source &amp; contact</h3>
+        <p>
+          The full source is on
+          <a href="https://github.com/schj-z/coffinat" target="_blank" rel="noopener noreferrer">GitHub</a>;
+          questions, corrections and bug reports are welcome via its
+          <a href="https://github.com/schj-z/coffinat/issues" target="_blank" rel="noopener noreferrer">issue tracker</a>.
+        </p>
       </footer>
     </div>
 
@@ -203,7 +274,9 @@
         </div>
         <div class="brew__result" id="brew-result" aria-live="polite"></div>
         <p class="field__hint">
-          Assumes near-boiling water (~93–96 °C). Extraction is ~95% complete within ~2 minutes.
+          A simplified estimate: it assumes near-boiling water (~93–96 °C) and models extraction as
+          reaching about 95% of its maximum within ~2 minutes. Real yields vary with grind, dose,
+          agitation and temperature. See <a href="#about">sources</a> below.
         </p>
         <div class="brew__actions">
           <button type="button" class="button button--quiet" id="brew-cancel">Cancel</button>
